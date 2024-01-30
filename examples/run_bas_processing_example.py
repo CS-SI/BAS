@@ -1,10 +1,10 @@
 import os
+
 os.environ['USE_PYGEOS'] = '0'
 import geopandas as gpd
 
 from basprocessor import WidthProcessing
 from rivergeomproduct import RiverGeomProduct
-
 
 # Input file
 watermask_tif = "example_watermask.tif"
@@ -212,6 +212,65 @@ def example_5():
                                               dct_attr=dct_geom_attr)
     obj_rivergeom.draw_allreaches_centerline()
     gdf_sections_ortho = obj_rivergeom.draw_allreaches_sections(type="ortho")
+
+    # Set configs #5
+    dct_cfg_V5 = {"clean": {"bool_clean": True,
+                            "type_label": "waterbodies",
+                            "fpath_wrkdir": "/home/charlotte/Work/AT-SWOT/cal-val/git/BAS/examples",
+                            "gdf_waterbodies": gdf_waterbodies
+                            },
+                  "label": {"bool_label": True,
+                            "type_label": "base",
+                            "fpath_wrkdir": "/home/charlotte/Work/AT-SWOT/cal-val/git/BAS/examples"
+                            },
+                  "widths": {"scenario": 11
+                             }
+                  }
+
+    # Instanciate basprocessor(s)
+    processor_a = WidthProcessing(
+        str_watermask_tif=watermask_tif,
+        gdf_sections=gdf_sections_ortho,
+        gdf_reaches=gdf_reaches_cplx,
+        attr_reachid="reach_id",
+        str_proj="proj",
+        str_provider="EO"
+    )
+    processor_a.preprocessing()
+    gdf_widths_a = processor_a.processing(dct_cfg_V5)
+    gdf_widths_a["reach_id"] = gdf_widths_a["reach_id"].astype(str)
+    gdf_widths_a["node_id"] = gdf_widths_a["node_id"].astype(int).astype(str)
+    gdf_widths_a.to_file("widths_example5.shp")
+
+    print("")
+    print("===== BASProcessing Example #5 = END =====")
+
+
+def example_6():
+    """Example_6 :
+        Watermask cleaning with reference waterbodies + watermask labelling
+        Sections NOT available
+        2 width products over the same mask
+    """
+
+    print("===== BASProcessing Example #6 = BEGIN =====")
+    print("")
+
+    # Load reaches
+    gdf_reaches_cplx = gpd.read_file(shp_reaches_cplx)
+
+    # Compute sections
+    dct_geom_attr = {"reaches": {"reaches_id": "reach_id"},
+                     "nodes": {"reaches_id": "reach_id",
+                               "nodes_id": "node_id",
+                               "pwidth": "p_width",
+                               "pwse": "p_wse"}}
+    obj_rivergeom = RiverGeomProduct.from_shp(reaches_shp=shp_reaches_cplx,
+                                              nodes_shp=shp_nodes_cplx,
+                                              bool_edge=False,
+                                              dct_attr=dct_geom_attr)
+    obj_rivergeom.draw_allreaches_centerline()
+    gdf_sections_ortho = obj_rivergeom.draw_allreaches_sections(type="ortho")
     gdf_sections_chck = obj_rivergeom.draw_allreaches_sections(type="chck")
 
     # Set configs #5
@@ -254,10 +313,7 @@ def example_5():
     gdf_widths_a = processor_a.processing(dct_cfg_V5a)
     gdf_widths_a["reach_id"] = gdf_widths_a["reach_id"].astype(str)
     gdf_widths_a["node_id"] = gdf_widths_a["node_id"].astype(int).astype(str)
-    print(gdf_widths_a)
-    gdf_widths_a.to_file("example_width_cplx_a.shp")
 
-    print(gdf_sections_chck.columns)
     processor_b = WidthProcessing(
         str_watermask_tif=processor_a.watermask.rasterfile,
         gdf_sections=gdf_sections_chck,
@@ -273,11 +329,10 @@ def example_5():
     gdf_widths_b = processor_b.processing(dct_cfg_V5b)
     gdf_widths_b["reach_id"] = gdf_widths_b["reach_id"].astype(str)
     gdf_widths_b["node_id"] = gdf_widths_b["node_id"].astype(int).astype(str)
-    print(gdf_widths_b)
-    gdf_widths_b.to_file("example_width_cplx_b.shp")
+    gdf_widths_b.to_file("widths_example6.shp")
 
     print("")
-    print("===== BASProcessing Example #5 = END =====")
+    print("===== BASProcessing Example #6 = END =====")
 
 
 if __name__ == "__main__":
@@ -300,6 +355,9 @@ if __name__ == "__main__":
     #
     # # Run example 4
     # example_4()
-
-    # Run example 5
-    example_5()
+    #
+    # # Run example 5
+    # example_5()
+    #
+    # # Run example 6
+    # example_6()
