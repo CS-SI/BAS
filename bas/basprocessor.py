@@ -203,7 +203,7 @@ class WidthProcessing:
             gdf_widths, _ = compute_widths_from_single_watermask(scenario=dct_cfg["widths"]["scenario"],
                                                                  watermask=src,
                                                                  sections=gdf_wrk_sections,
-                                                                 buffer_length=4.0 * self.watermask.res)
+                                                                 buffer_length=8.0 * self.watermask.res)
 
         print("")
         print("----- Processing : Done -----")
