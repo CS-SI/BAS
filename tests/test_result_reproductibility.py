@@ -15,10 +15,10 @@ if __name__ == "__main__":
 
     parser.add_argument(
         "-id_test", dest="id_test", default=None,
-        help="Path to granule directory with ICESat-2 ATL13 data from direct download or restart csv file")
+        help="index(es) of tests to run")
     parser.add_argument(
         "-output_run", dest="output_run", default=None,
-        help="Path to shp files with width outputs to tests")
+        help="Path(es) to shp files with width outputs to tests")
 
     # Read and check optionnal input arguments
     opt = parser.parse_args()
