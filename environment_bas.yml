@@ -1,4 +1,4 @@
-name: BAS_3-0-0
+name: BAS
 channels:
   - conda-forge
   - defaults
