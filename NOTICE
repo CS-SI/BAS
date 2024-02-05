@@ -15,7 +15,7 @@ The CeCILL-B License
 The following components are provided under the CeCILL-B License  (https://cecill.info/licences/Licence_CeCILL-B_V1-en.html).
 See project link for details.
 
-https://github.com/klarnier/sw1dto2d/tree/main
+https://github.com/klarnier/sw1dto2d
 
 
 ================================================================
@@ -27,7 +27,7 @@ See project link for details.
 
 https://github.com/geopy/geopy
 https://github.com/Unidata/netcdf4-python
-https://github.com/OSGeo/gdal/tree/master
+https://github.com/OSGeo/gdal
 https://github.com/pyproj4/pyproj
 
 
@@ -38,9 +38,9 @@ The BSD-3-Clause Licence
 The following components are provided under the  BSD-3-Clause License  (https://opensource.org/licenses/BSD-3-Clause).
 See project link for details.
 
-https://github.com/mwtoews/fiona/tree/master
+https://github.com/mwtoews/fiona
 https://github.com/geopandas/geopandas
-https://github.com/gonum/hdf5/tree/master
+https://github.com/gonum/hdf5
 https://github.com/numpy/numpy
 https://github.com/pandas-dev/pandas
 https://github.com/rasterio/rasterio
