@@ -1,0 +1,48 @@
+Buffer Around Section (BAS) Copyright 2024 CS GROUP - France
+
+This software is distributed under the Apache Software License (ASL) v2.0, see LICENSE
+file or http://www.apache.org/licenses/LICENSE-2.0 for details.
+
+
+This software includes code from many other open source projects. See below for details
+about the license of each project.
+
+
+================================================================
+The CeCILL-B License
+================================================================
+
+The following components are provided under the CeCILL-B License  (https://cecill.info/licences/Licence_CeCILL-B_V1-en.html).
+See project link for details.
+
+https://github.com/klarnier/sw1dto2d/tree/main
+
+
+================================================================
+The MIT License
+================================================================
+
+The following components are provided under the  MIT License  (http://www.opensource.org/licenses/mit-license.php).
+See project link for details.
+
+https://github.com/geopy/geopy
+https://github.com/Unidata/netcdf4-python
+https://github.com/OSGeo/gdal/tree/master
+https://github.com/pyproj4/pyproj
+
+
+================================================================
+The BSD-3-Clause Licence
+================================================================
+
+The following components are provided under the  BSD-3-Clause License  (https://opensource.org/licenses/BSD-3-Clause).
+See project link for details.
+
+https://github.com/mwtoews/fiona/tree/master
+https://github.com/geopandas/geopandas
+https://github.com/gonum/hdf5/tree/master
+https://github.com/numpy/numpy
+https://github.com/pandas-dev/pandas
+https://github.com/rasterio/rasterio
+https://github.com/shapely/shapely
+

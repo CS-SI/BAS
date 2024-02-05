@@ -228,4 +228,3 @@ dependencies:
   - pip:
       - fiona==1.8.22
       - sw1dto2d==0.0.3
-prefix: /home/charlotte/Programmes/miniconda3/envs/BAS_3-0-0
