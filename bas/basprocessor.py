@@ -38,7 +38,7 @@ from widths import compute_widths_from_single_watermask
 os.environ['USE_PYGEOS'] = '0'
 
 
-class WidthProcessing:
+class BASProcessor:
 
     def __init__(self, str_watermask_tif=None, gdf_sections=None, gdf_reaches=None, attr_reachid=None, str_proj="proj",
                  str_provider=None,
