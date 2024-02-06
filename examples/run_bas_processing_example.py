@@ -235,12 +235,12 @@ def example_5():
     gdf_sections_ortho = obj_rivergeom.draw_allreaches_sections(type="ortho")
 
     # Set configs #5
-    dct_cfg_V5 = {"clean": {"bool_toclean": True,
+    dct_cfg_V5 = {"clean": {"bool_clean": True,
                             "type_clean": "waterbodies",
                             "fpath_wrkdir": "/home/charlotte/Work/AT-SWOT/cal-val/git/BAS/examples",
                             "gdf_waterbodies": gdf_waterbodies
                             },
-                  "label": {"bool_tolabel": True,
+                  "label": {"bool_label": True,
                             "type_label": "base",
                             "fpath_wrkdir": "/home/charlotte/Work/AT-SWOT/cal-val/git/BAS/examples"
                             },
@@ -294,13 +294,13 @@ def example_6():
     gdf_sections_ortho = obj_rivergeom.draw_allreaches_sections(type="ortho")
     gdf_sections_chck = obj_rivergeom.draw_allreaches_sections(type="chck")
 
-    # Set configs #5
-    dct_cfg_V5a = {"clean": {"bool_toclean": True,
+    # Set configs #6
+    dct_cfg_V6a = {"clean": {"bool_clean": True,
                              "type_clean": "waterbodies",
                              "fpath_wrkdir": "/home/charlotte/Work/AT-SWOT/cal-val/git/BAS/examples",
                              "gdf_waterbodies": gdf_waterbodies
                              },
-                   "label": {"bool_tolabel": True,
+                   "label": {"bool_label": True,
                              "type_label": "base",
                              "fpath_wrkdir": "/home/charlotte/Work/AT-SWOT/cal-val/git/BAS/examples"
                              },
@@ -308,12 +308,12 @@ def example_6():
                               }
                    }
 
-    dct_cfg_V5b = {"clean": {"bool_toclean": False,
+    dct_cfg_V6b = {"clean": {"bool_clean": False,
                              "type_clean": "waterbodies",
                              "fpath_wrkdir": "/home/charlotte/Work/AT-SWOT/cal-val/git/BAS/examples",
                              "gdf_waterbodies": gdf_waterbodies
                              },
-                   "label": {"bool_tolabel": False,
+                   "label": {"bool_label": False,
                              "type_label": "base",
                              "fpath_wrkdir": "/home/charlotte/Work/AT-SWOT/cal-val/git/BAS/examples"
                              },
@@ -331,7 +331,7 @@ def example_6():
         str_provider="EO"
     )
     processor_a.preprocessing()
-    gdf_widths_a = processor_a.processing(dct_cfg_V5a)
+    gdf_widths_a = processor_a.processing(dct_cfg_V6a)
     gdf_widths_a["reach_id"] = gdf_widths_a["reach_id"].astype(str)
     gdf_widths_a["node_id"] = gdf_widths_a["node_id"].astype(int).astype(str)
 
@@ -347,7 +347,7 @@ def example_6():
     processor_b.preprocessing()
     processor_b.watermask.bool_labelled = True
 
-    gdf_widths_b = processor_b.processing(dct_cfg_V5b)
+    gdf_widths_b = processor_b.processing(dct_cfg_V6b)
     gdf_widths_b["reach_id"] = gdf_widths_b["reach_id"].astype(str)
     gdf_widths_b["node_id"] = gdf_widths_b["node_id"].astype(int).astype(str)
     gdf_widths_b.to_file("widths_example6.shp")
@@ -368,17 +368,17 @@ if __name__ == "__main__":
     # Run example 1
     example_1()
 
-    # # Run example 2
-    # example_2()
-    #
-    # # Run example 3
-    # example_3()
-    #
-    # # Run example 4
-    # example_4()
-    #
-    # # Run example 5
-    # example_5()
-    #
+    # Run example 2
+    example_2()
+
+    # Run example 3
+    example_3()
+
+    # Run example 4
+    example_4()
+
+    # Run example 5
+    example_5()
+
     # Run example 6
     example_6()

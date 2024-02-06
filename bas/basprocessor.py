@@ -86,12 +86,12 @@ class BASProcessor:
             self.scene_datetime = None
 
         # Processing default values
-        self.dct_cfg = {"clean": {"bool_clean": True,
+        self.dct_cfg = {"clean": {"bool_toclean": True,
                                   "type_clean": "base",
                                   "fpath_wrkdir": ".",
                                   "gdf_waterbodies": None
                                   },
-                        "label": {"bool_label": False,
+                        "label": {"bool_tolabel": False,
                                   "type_label": "base",
                                   "fpath_wrkdir": "."
                                   },
