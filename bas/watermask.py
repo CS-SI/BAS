@@ -84,8 +84,8 @@ class WaterMask:
         self.coordsyst = None  # "proj" or "lonlat"
         self.res = None
 
-        self.bool_clean = False
-        self.bool_label = False
+        self.bool_cleaned = False
+        self.bool_labelled = False
 
     @classmethod
     def from_tif(cls, watermask_tif=None, str_origin=None, str_proj="proj"):
@@ -306,7 +306,8 @@ class WaterMask:
             ) as new_dataset:
                 new_dataset.write(band_clean, 1)
 
-            self.bool_clean = True
+            self.bool_cleaned = True
+        return self.rasterfile
 
     def label_watermask(self, gdf_reaches=None, attr_reachid=None, out_dir=".", scn_name="scn"):
         """Label watermask into individual regions associated to a unique reach each
@@ -327,7 +328,7 @@ class WaterMask:
 
         print(" ---- Label watermask ---- ")
 
-        if not self.bool_clean:
+        if not self.bool_cleaned:
             raise Warning("Watermask not yet cleaned, should be done before..")
 
         # Gather reaches and project them into the watermask coordinate system
@@ -393,7 +394,8 @@ class WaterMask:
             ) as new_dataset:
                 new_dataset.write(band_label, 1)
 
-        self.bool_label = True
+        self.bool_labelled = True
+        return self.rasterfile
 
     def reduce_sections(self, gdf_reaches=None, attr_reachid=None, gdf_sections_in=None):
         """Reduce sections geometry to its associated region
@@ -447,7 +449,7 @@ class WaterMask:
                 dct_regions[key]["region"] = MultiPolygon(dct_regions[key]["all"])
 
             # Reduce sections geometry to within the associated region
-            if self.bool_label :
+            if self.bool_labelled :
                 l_gdfsub_sections = []
                 for index in dct_regions.keys():
 
