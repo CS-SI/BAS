@@ -52,7 +52,7 @@ def example_1():
 
     # Set config #1
     dct_cfg_V1 = {"clean": {"bool_clean": False,
-                            "type_label": "base",
+                            "type_clean": "base",
                             "fpath_wrkdir": ".",
                             "gdf_waterbodies": None
                             },
@@ -94,7 +94,7 @@ def example_2():
 
     # Set config #2
     dct_cfg_V2 = {"clean": {"bool_clean": True,
-                            "type_label": "base",
+                            "type_clean": "base",
                             "fpath_wrkdir": ".",
                             "gdf_waterbodies": None
                             },
@@ -136,7 +136,7 @@ def example_3():
 
     # Set config #3
     dct_cfg_V3 = {"clean": {"bool_clean": True,
-                            "type_label": "waterbodies",
+                            "type_clean": "waterbodies",
                             "fpath_wrkdir": ".",
                             "gdf_waterbodies": gdf_waterbodies
                             },
@@ -178,7 +178,7 @@ def example_4():
 
     # Set config #4
     dct_cfg_V4 = {"clean": {"bool_clean": True,
-                            "type_label": "waterbodies",
+                            "type_clean": "waterbodies",
                             "fpath_wrkdir": ".",
                             "gdf_waterbodies": gdf_waterbodies
                             },
@@ -235,12 +235,12 @@ def example_5():
     gdf_sections_ortho = obj_rivergeom.draw_allreaches_sections(type="ortho")
 
     # Set configs #5
-    dct_cfg_V5 = {"clean": {"bool_clean": True,
-                            "type_label": "waterbodies",
+    dct_cfg_V5 = {"clean": {"bool_toclean": True,
+                            "type_clean": "waterbodies",
                             "fpath_wrkdir": "/home/charlotte/Work/AT-SWOT/cal-val/git/BAS/examples",
                             "gdf_waterbodies": gdf_waterbodies
                             },
-                  "label": {"bool_label": True,
+                  "label": {"bool_tolabel": True,
                             "type_label": "base",
                             "fpath_wrkdir": "/home/charlotte/Work/AT-SWOT/cal-val/git/BAS/examples"
                             },
@@ -295,12 +295,12 @@ def example_6():
     gdf_sections_chck = obj_rivergeom.draw_allreaches_sections(type="chck")
 
     # Set configs #5
-    dct_cfg_V5a = {"clean": {"bool_clean": True,
-                             "type_label": "waterbodies",
+    dct_cfg_V5a = {"clean": {"bool_toclean": True,
+                             "type_clean": "waterbodies",
                              "fpath_wrkdir": "/home/charlotte/Work/AT-SWOT/cal-val/git/BAS/examples",
                              "gdf_waterbodies": gdf_waterbodies
                              },
-                   "label": {"bool_label": True,
+                   "label": {"bool_tolabel": True,
                              "type_label": "base",
                              "fpath_wrkdir": "/home/charlotte/Work/AT-SWOT/cal-val/git/BAS/examples"
                              },
@@ -308,12 +308,12 @@ def example_6():
                               }
                    }
 
-    dct_cfg_V5b = {"clean": {"bool_clean": False,
-                             "type_label": "waterbodies",
+    dct_cfg_V5b = {"clean": {"bool_toclean": False,
+                             "type_clean": "waterbodies",
                              "fpath_wrkdir": "/home/charlotte/Work/AT-SWOT/cal-val/git/BAS/examples",
                              "gdf_waterbodies": gdf_waterbodies
                              },
-                   "label": {"bool_label": False,
+                   "label": {"bool_tolabel": False,
                              "type_label": "base",
                              "fpath_wrkdir": "/home/charlotte/Work/AT-SWOT/cal-val/git/BAS/examples"
                              },
@@ -345,7 +345,7 @@ def example_6():
     )
 
     processor_b.preprocessing()
-    processor_b.watermask.bool_label = True
+    processor_b.watermask.bool_labelled = True
 
     gdf_widths_b = processor_b.processing(dct_cfg_V5b)
     gdf_widths_b["reach_id"] = gdf_widths_b["reach_id"].astype(str)
