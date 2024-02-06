@@ -24,7 +24,7 @@ import os
 os.environ['USE_PYGEOS'] = '0'
 import geopandas as gpd
 
-from basprocessor import WidthProcessing
+from basprocessor import BASProcessor
 
 # Inputs for test_1
 str_watermask_1_tif = "unit_watermask_1.tif"
@@ -62,7 +62,7 @@ def test_1():
                      }
 
     # Instanciate basprocessor
-    processor = WidthProcessing(
+    processor = BASProcessor(
         str_watermask_tif=str_watermask_1_tif,
         gdf_sections=gdf_sections,
         gdf_reaches=gdf_reaches,
@@ -94,7 +94,7 @@ def test_2():
                      }
 
     # Instanciate basprocessor
-    processor = WidthProcessing(
+    processor = BASProcessor(
         str_watermask_tif=str_watermask_2_tif,
         gdf_sections=gdf_sections,
         gdf_reaches=gdf_reaches,
@@ -126,7 +126,7 @@ def test_3():
                      }
 
     # Instanciate basprocessor
-    processor = WidthProcessing(
+    processor = BASProcessor(
         str_watermask_tif=str_watermask_3_tif,
         gdf_sections=gdf_sections,
         gdf_reaches=gdf_reaches,

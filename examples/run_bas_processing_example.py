@@ -24,7 +24,7 @@ import os
 os.environ['USE_PYGEOS'] = '0'
 import geopandas as gpd
 
-from basprocessor import WidthProcessing
+from basprocessor import BASProcessor
 from rivergeomproduct import RiverGeomProduct
 
 # Input file
@@ -65,7 +65,7 @@ def example_1():
                   }
 
     # Instanciate basprocessor
-    processor = WidthProcessing(
+    processor = BASProcessor(
         str_watermask_tif=watermask_tif,
         gdf_sections=gdf_sections,
         gdf_reaches=gdf_reaches,
@@ -107,7 +107,7 @@ def example_2():
                   }
 
     # Instanciate basprocessor
-    processor = WidthProcessing(
+    processor = BASProcessor(
         str_watermask_tif=watermask_tif,
         gdf_sections=gdf_sections,
         gdf_reaches=gdf_reaches,
@@ -149,7 +149,7 @@ def example_3():
                   }
 
     # Instanciate basprocessor
-    processor = WidthProcessing(
+    processor = BASProcessor(
         str_watermask_tif=watermask_tif,
         gdf_sections=gdf_sections,
         gdf_reaches=gdf_reaches,
@@ -191,7 +191,7 @@ def example_4():
                   }
 
     # Instanciate basprocessor
-    processor = WidthProcessing(
+    processor = BASProcessor(
         str_watermask_tif=watermask_tif,
         gdf_sections=gdf_sections,
         gdf_reaches=gdf_reaches,
@@ -249,7 +249,7 @@ def example_5():
                   }
 
     # Instanciate basprocessor(s)
-    processor_a = WidthProcessing(
+    processor_a = BASProcessor(
         str_watermask_tif=watermask_tif,
         gdf_sections=gdf_sections_ortho,
         gdf_reaches=gdf_reaches_cplx,
@@ -322,7 +322,7 @@ def example_6():
                    }
 
     # Instanciate basprocessor(s)
-    processor_a = WidthProcessing(
+    processor_a = BASProcessor(
         str_watermask_tif=watermask_tif,
         gdf_sections=gdf_sections_ortho,
         gdf_reaches=gdf_reaches_cplx,
@@ -335,7 +335,7 @@ def example_6():
     gdf_widths_a["reach_id"] = gdf_widths_a["reach_id"].astype(str)
     gdf_widths_a["node_id"] = gdf_widths_a["node_id"].astype(int).astype(str)
 
-    processor_b = WidthProcessing(
+    processor_b = BASProcessor(
         str_watermask_tif=processor_a.watermask.rasterfile,
         gdf_sections=gdf_sections_chck,
         gdf_reaches=gdf_reaches_cplx,
@@ -380,5 +380,5 @@ if __name__ == "__main__":
     # # Run example 5
     # example_5()
     #
-    # # Run example 6
-    # example_6()
+    # Run example 6
+    example_6()
