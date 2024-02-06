@@ -11,10 +11,10 @@ Main version available on github : https://github.com/CS-SI/BAS
 
 ## Getting started
 
-The toolbox works in a specific environment that can be installed through conda using the environment_bas-3-0-0.yml file
+The toolbox works in a specific environment that can be installed through conda using the environment_bas.yml file
 
 ```shell
-conda env create -f environment_bas-3-0-0.yml
+conda env create -f environment_bas.yml
 ```
 
 ## Features
