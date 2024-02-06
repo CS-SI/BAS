@@ -87,7 +87,7 @@ class BASProcessor:
 
         # Processing default values
         self.dct_cfg = {"clean": {"bool_clean": True,
-                                  "type_label": "base",
+                                  "type_clean": "base",
                                   "fpath_wrkdir": ".",
                                   "gdf_waterbodies": None
                                   },
