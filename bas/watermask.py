@@ -197,11 +197,12 @@ class WaterMask:
 
         return minlon, minlat, maxlon, maxlat
 
-    def clean_watermask(self, gdf_reaches=None, out_dir=".", scn_name="scn", gdf_waterbodies=None):
-        """Clean watermask from non-river waterbody
+    def clean_watermask(self, str_type_clean="base", gdf_reaches=None, out_dir=".", scn_name="scn", gdf_waterbodies=None):
+        """Clean watermask from non-river waterbodies
 
         Parameters
         ----------
+        str_type_clean : str
         gdf_reaches : gpd.GeoDataFrame
             with shapely.geometry.LineString geometries
         scn_name : str
@@ -228,7 +229,7 @@ class WaterMask:
 
             # Clean watermask using waterbody database as reference (if provided)
             l_shapes_waterbodies = []
-            if gdf_waterbodies is not None:
+            if gdf_waterbodies is not None and str_type_clean=="waterbodies":
 
                 # Check waterbodies coordinate system and reproject if necessary
                 gdf_waterbodies_wrk = gdf_waterbodies.to_crs(self.crs)
