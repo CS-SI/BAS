@@ -443,11 +443,13 @@ class RiverGeomProduct:
         self.dct_centerline[reachid]["W"] = npar_flt_wrk_pwidth
         self.dct_centerline[reachid]["H"] = npar_flt_wrk_pwse
 
-    def draw_allreaches_sections(self, type="ortho"):
+    def draw_allreaches_sections(self, type="ortho", flt_factor_width=10.):
         """ Draw all section geometries
 
         Parameters
         ----------
+        flt_factor_width : float
+            SWORD width multiplying factor to draw section
         type : str
             "ortho" : by default. sections orthogonal to centerlines
             "chck": over a given centerline: all sections are parallel and orthogonal to
@@ -464,12 +466,12 @@ class RiverGeomProduct:
 
         if type == "ortho":
             for reachid in self.npar_int_reachgrp_reachid:
-                gdf_sections = self.draw_singlereach_sections_ortho(reachid)
+                gdf_sections = self.draw_singlereach_sections_ortho(reachid, flt_factor_width)
                 l_gdf_sections.append(gdf_sections)
 
         elif type == "chck":
             for reachid in self.npar_int_reachgrp_reachid:
-                gdf_sections = self.draw_singlereach_sections_chck(reachid)
+                gdf_sections = self.draw_singlereach_sections_chck(reachid, flt_factor_width)
                 l_gdf_sections.append(gdf_sections)
 
         else:
@@ -478,22 +480,26 @@ class RiverGeomProduct:
         gdf_allreaches_sections = pd.concat(l_gdf_sections).reset_index(drop=True)
         return gdf_allreaches_sections
 
-    def draw_singlereach_sections_ortho(self, reachid):
+    def draw_singlereach_sections_ortho(self, reachid, flt_factor_width=10.):
         """Draw section of type "ortho" over a single reach
 
         Parameters
         ----------
+        flt_factor_width : float
+            SWORD width multiplying factor to draw section
         reachid :
 
         Returns
         -------
+        flt_factor_width : float
+            SWORD width multiplying factor to draw section
         gdf_sections : gpd.GeoDataFrame
 
         """
 
         # Prepare inputs for the SW1Dto2D object
         xs = self.dct_centerline[reachid]["xs"]
-        W = self.dct_centerline[reachid]["W"] * 10.
+        W = self.dct_centerline[reachid]["W"] * flt_factor_width
         H = self.dct_centerline[reachid]["H"]
         df_model1d = pd.DataFrame(
             {"xs": xs,
@@ -528,11 +534,12 @@ class RiverGeomProduct:
 
         return gdf_sections
 
-    def draw_singlereach_sections_chck(self, reachid):
+    def draw_singlereach_sections_chck(self, reachid, flt_factor_width=10.):
         """Draw sections of type "chck" over a single reach
 
         Parameters
         ----------
+        flt_factor_width : float
         reachid :
 
         Returns
@@ -543,7 +550,7 @@ class RiverGeomProduct:
 
         # Prepare inputs for the SW1Dto2D object
         xs = self.dct_centerline[reachid]["xs"]
-        W = self.dct_centerline[reachid]["W"] * 10.
+        W = self.dct_centerline[reachid]["W"] * flt_factor_width
         H = self.dct_centerline[reachid]["H"]
         df_model1d = pd.DataFrame(
             {"xs": xs,
