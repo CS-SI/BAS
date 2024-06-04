@@ -173,7 +173,7 @@ class BASProcessor:
         ----------
         dct_cfg : set processing configuration
         { "clean" : { "bool_clean" : True/False,
-                      "type_label" : base/waterbodies,
+                      "type_clean" : base/waterbodies,
                       "fpath_wrkdir" : "."
                       "gdf_waterbodies" : gdf with polygon waterbodies to clean waterbodies [optionnal]
                     },
@@ -199,7 +199,8 @@ class BASProcessor:
 
         # Clean watermask
         if dct_cfg["clean"]["bool_clean"]:
-            self.watermask.clean_watermask(gdf_reaches=self.gdf_reaches,
+            self.watermask.clean_watermask(str_type_clean=dct_cfg["clean"]["type_clean"],
+                                           gdf_reaches=self.gdf_reaches,
                                            out_dir=dct_cfg["clean"]["fpath_wrkdir"],
                                            scn_name=self.scene_name,
                                            gdf_waterbodies=dct_cfg["clean"]["gdf_waterbodies"])
