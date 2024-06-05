@@ -29,7 +29,7 @@ import numpy as np
 import rasterio as rio
 from rasterio.mask import mask
 from rasterio.features import shapes
-from shapely.geometry import Polygon, MultiPolygon
+from shapely.geometry import shape, MultiPolygon
 
 os.environ['USE_PYGEOS'] = '0'
 
@@ -245,14 +245,18 @@ def compute_widths_from_single_watermask_scenario11(watermask, sections, buffer_
 
     # Create updated_sections GeoDataFrame (result of this function)
     updated_sections = sections.copy()
+    # Add a column to contain estimated width
     updated_sections.insert(len(updated_sections.columns) - 1, "width",
-                            np.nan)  # Add a column to contain estimated width
+                            np.nan)
+    # Add a flag column indicating if buffer is full of water (and so potentially sections is too short)
     updated_sections.insert(len(updated_sections.columns) - 1, "flg_bufful",
-                            np.nan)  # Add a column to contain flag indicating if buffer is full of water (and so potentially sections is too short)
+                            np.nan)
+    # Add a column to contain fraction of buffer area intersecting other buffers
     updated_sections.insert(len(updated_sections.columns) - 1, "beta",
-                            np.nan)  # Add a column to contain fraction of buffer area intersecting other buffer
+                            np.nan)
+    # Add a column to contain number of river banks in buffer
     updated_sections.insert(len(updated_sections.columns) - 1, "nb_banks",
-                            np.nan)  # Add a column to contain number of river banks in buffer
+                            np.nan)
 
     # Project sections to EPSG 3857 if necessary (to get metric distances)
     if sections.crs.to_epsg() == 4326:
@@ -277,7 +281,7 @@ def compute_widths_from_single_watermask_scenario11(watermask, sections, buffer_
         # Mask the water mask with the buffer of current section
         section_buffered = sections_buffered.loc[section_index]
 
-        if section_buffered.is_empty:
+        if section_buffered.is_empty or section_buffered is None:
             updated_sections.loc[section_index, "width"] = np.nan
             l_shape.append(MultiPolygon())
             l_buffer_waterarea.append(0.0)
@@ -308,30 +312,12 @@ def compute_widths_from_single_watermask_scenario11(watermask, sections, buffer_
                     updated_sections.loc[section_index, "flg_bufful"] = 0
 
                 # Compute water buffer polygon
-                l_all_polygons = []
-                il_i = 0
-                for feat, value in shapes(out_image, mask=(out_image > 0), transform=out_transform):
-                    l_polygons = []
-                    l_values = []
-                    for coords in feat["coordinates"]:
-                        l_polygons.append(Polygon(coords))
-                    if len(l_polygons) > 1:
-                        big_pol = l_polygons[0]
-                        small_pol = MultiPolygon(l_polygons[1:])
-                        polygon = big_pol.difference(small_pol)
-                    else:
-                        polygon = l_polygons[0]
-                    l_all_polygons.append(polygon)
-                    l_values.append(value)
-                    il_i += 1
-                if len(l_all_polygons) > 1:
-                    l_shape.append(MultiPolygon(l_all_polygons))
-                    l_buffer_waterarea.append(water_area)
-                    l_nb_banks.append(2 * len(l_all_polygons))
-                else:
-                    l_shape.append(MultiPolygon())
-                    l_buffer_waterarea.append(water_area)
-                    l_nb_banks.append(2.0)
+                l_geom_water_pols = [shape(feat) for feat, value in
+                                     shapes(out_image, mask=(out_image > 0), transform=out_transform)]
+
+                l_shape.append(MultiPolygon(l_geom_water_pols))
+                l_buffer_waterarea.append(water_area)
+                l_nb_banks.append(2 * len(l_geom_water_pols))
 
             except Exception:
                 updated_sections.loc[section_index, "width"] = np.nan
@@ -346,15 +332,19 @@ def compute_widths_from_single_watermask_scenario11(watermask, sections, buffer_
          "intersect_area": 0.,
          "beta": 0.},
         index=sections.index,
-        geometry=gpd.GeoSeries(l_shape, crs=sections.crs),
+        geometry=gpd.GeoSeries(l_shape, crs=sections.crs, index=sections.index),
         crs=sections.crs
     )
 
     # Quantify intersection between buffer shapes
     for index in gdf_waterbuffer.index:
-        if gdf_waterbuffer.at[index, "geometry"] is not None:
+
+        if not gdf_waterbuffer.at[index, "geometry"].is_empty:
+
+            # Extract current buffer to check
             geom = gdf_waterbuffer.at[index, "geometry"]
 
+            # Keep all other buffers apart
             gser_wrk = gdf_waterbuffer["geometry"].copy(deep=True)
             gser_wrk.drop(labels=index, inplace=True)
 
@@ -362,7 +352,7 @@ def compute_widths_from_single_watermask_scenario11(watermask, sections, buffer_
             ser_buffer_intersection_areatot = ser_buffer_intersection.area
             gdf_waterbuffer.at[index, "intersect_area"] = ser_buffer_intersection_areatot.sum()
 
-            if gdf_waterbuffer.at[index, "water_area"] != 0:
+            if gdf_waterbuffer.at[index, "water_area"] != 0.:
                 beta = gdf_waterbuffer.at[index, "intersect_area"] / gdf_waterbuffer.at[index, "water_area"]
             else:
                 beta = np.nan
@@ -370,6 +360,9 @@ def compute_widths_from_single_watermask_scenario11(watermask, sections, buffer_
             if np.isnan(beta) or np.isinf(beta):
                 beta = 0.0
             gdf_waterbuffer.at[index, "beta"] = beta
+
+            del gser_wrk
+
     gdf_waterbuffer["flg_bufful"] = updated_sections["flg_bufful"]
     updated_sections["beta"] = gdf_waterbuffer["beta"]
 
