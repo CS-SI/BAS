@@ -128,6 +128,7 @@ class WaterMask:
                           src.bounds.bottom,
                           src.bounds.right,
                           src.bounds.top)
+            print(klass.bbox)
 
         return klass
 
@@ -176,20 +177,25 @@ class WaterMask:
 
             tgt = osr.SpatialReference()
             tgt.ImportFromEPSG(4326)
-            if osgeo.__version__ >= "3.6.4":
-                tgt.SetAxisMappingStrategy(osr.OAMS_TRADITIONAL_GIS_ORDER)
+            # Before GDAL 3.0 the axis order was longitude first, latitude later.
+            # Starting with GDAL 3.0 CRS created with the "EPSG:4326" or "WGS84"
+            # strings use the latitude first, longitude second axis order
+            # if osgeo.__version__ >= "3.6.4":
+            #     tgt.SetAxisMappingStrategy(osr.OAMS_TRADITIONAL_GIS_ORDER)
 
             osr_transform = osr.CoordinateTransformation(src, tgt)
 
             lonlat_bottomleft_edge = osr_transform.TransformPoint(self.bbox[0], self.bbox[1])
+            # output : (lat, lon, z)
             lonlat_topleft_edge = osr_transform.TransformPoint(self.bbox[0], self.bbox[3])
             lonlat_bottomright_edge = osr_transform.TransformPoint(self.bbox[2], self.bbox[1])
             lonlat_topright_edge = osr_transform.TransformPoint(self.bbox[2], self.bbox[3])
 
-            minlon = min([lonlat_bottomleft_edge[0], lonlat_topleft_edge[0]])
-            maxlon = max([lonlat_bottomright_edge[0], lonlat_topright_edge[0]])
-            minlat = min([lonlat_bottomleft_edge[1], lonlat_bottomright_edge[1]])
-            maxlat = max([lonlat_topleft_edge[1], lonlat_topright_edge[1]])
+            minlon = min([lonlat_bottomleft_edge[1], lonlat_topleft_edge[1]])
+            maxlon = max([lonlat_bottomright_edge[1], lonlat_topright_edge[1]])
+
+            minlat = min([lonlat_bottomleft_edge[0], lonlat_bottomright_edge[0]])
+            maxlat = max([lonlat_topleft_edge[0], lonlat_topright_edge[0]])
 
 
         else:
