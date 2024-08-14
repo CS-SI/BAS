@@ -43,32 +43,7 @@ from tools import FileExtensionError, DimensionError
 # os.environ['USE_PYGEOS'] = '0'
 
 
-def reduce_section(lin_long_in, pol_in):
-    """Reduce linestring to the shortest linestring with the control polygon
 
-    Parameters
-    ----------
-    lin_long_in : LineString
-    pol_in : Polygon
-
-    Returns
-    -------
-    lin_out : LineString
-
-    """
-
-    lin_cut = pol_in.intersection(lin_long_in)
-    if isinstance(lin_cut, MultiLineString):
-        l_xy = []
-        for geom in lin_cut.geoms:
-            l_xy += list(geom.coords)
-        lin_out = LineString(l_xy)
-    elif isinstance(lin_cut, LineString):
-        lin_out = lin_cut
-    else:
-        raise NotImplementedError
-
-    return lin_out
 
 
 class WaterMask:
@@ -411,10 +386,14 @@ class WaterMask:
             ) as new_dataset:
                 new_dataset.write(npar_band_tosave, 1)
 
+            return str_fpath_wm_out_tif
+
         elif fmt == "pixc":
 
             str_fpath_wm_out_pixc_shp = os.path.join(str_fpath_dir_out, str_basename + "_pixc.shp")
             self.gdf_wm_as_pixc.to_file(str_fpath_wm_out_pixc_shp)
+
+            return str_fpath_wm_out_pixc_shp
 
         elif fmt == "shp":
 
@@ -424,6 +403,9 @@ class WaterMask:
             gdf_polygons["indices"] = gdf_polygons["indices"].apply(str)
 
             gdf_polygons.to_file(str_fpath_wm_out_pixc_shp)
+            return str_fpath_wm_out_pixc_shp
 
         else:
             raise ValueError("Unknown expected output format for the watermask")
+
+
