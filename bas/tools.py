@@ -48,6 +48,14 @@ class DisjointBboxError(ValueError):
         super().__init__(self.message)
 
 
+class DimensionError(ValueError):
+
+    def __init__(self, message="Object has the wrong dimensions."):
+        """Class constructor
+        """
+        self.message = message
+        super().__init__(self.message)
+
 class Timer:
 
     def __init__(self):
