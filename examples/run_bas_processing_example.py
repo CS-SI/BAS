@@ -19,9 +19,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
+import sys
+sys.path.append("/home/cemery/Work/git/BAS/bas")
 
-os.environ['USE_PYGEOS'] = '0'
 import geopandas as gpd
 
 from basprocessor import BASProcessor
@@ -74,9 +74,9 @@ def example_1():
         str_provider="EO"
     )
     processor.preprocessing()
-    gdf_widths = processor.processing(dct_cfg_V1)
+    gdf_widths, _ = processor.processing(dct_cfg_V1)
     print(gdf_widths)
-    gdf_widths.to_file("widths_example1.shp")
+    # gdf_widths.to_file("widths_example1.shp")
 
     print("")
     print("===== BASProcessing Example #1 = END =====")
@@ -116,7 +116,7 @@ def example_2():
         str_provider="EO"
     )
     processor.preprocessing()
-    gdf_widths = processor.processing(dct_cfg_V2)
+    gdf_widths, _ = processor.processing(dct_cfg_V2)
     print(gdf_widths)
     gdf_widths.to_file("widths_example2.shp")
 
@@ -158,7 +158,7 @@ def example_3():
         str_provider="EO"
     )
     processor.preprocessing()
-    gdf_widths = processor.processing(dct_cfg_V3)
+    gdf_widths, _ = processor.processing(dct_cfg_V3)
     print(gdf_widths)
     gdf_widths.to_file("widths_example3.shp")
 
@@ -200,7 +200,7 @@ def example_4():
         str_provider="EO"
     )
     processor.preprocessing()
-    gdf_widths = processor.processing(dct_cfg_V4)
+    gdf_widths, _ = processor.processing(dct_cfg_V4)
     print(gdf_widths)
     gdf_widths.to_file("widths_example4.shp")
 
@@ -233,6 +233,8 @@ def example_5():
                                               dct_attr=dct_geom_attr)
     obj_rivergeom.draw_allreaches_centerline()
     gdf_sections_ortho = obj_rivergeom.draw_allreaches_sections(type="ortho")
+    print(gdf_sections_ortho)
+    print("")
 
     # Set configs #5
     dct_cfg_V5 = {"clean": {"bool_clean": True,
@@ -258,7 +260,7 @@ def example_5():
         str_provider="EO"
     )
     processor_a.preprocessing()
-    gdf_widths_a = processor_a.processing(dct_cfg_V5)
+    gdf_widths_a, _ = processor_a.processing(dct_cfg_V5)
     gdf_widths_a["reach_id"] = gdf_widths_a["reach_id"].astype(str)
     gdf_widths_a["node_id"] = gdf_widths_a["node_id"].astype(int).astype(str)
     gdf_widths_a.to_file("widths_example5.shp")
@@ -331,12 +333,12 @@ def example_6():
         str_provider="EO"
     )
     processor_a.preprocessing()
-    gdf_widths_a = processor_a.processing(dct_cfg_V6a)
+    gdf_widths_a, str_fpath_updated_wm_tif = processor_a.processing(dct_cfg_V6a)
     gdf_widths_a["reach_id"] = gdf_widths_a["reach_id"].astype(str)
     gdf_widths_a["node_id"] = gdf_widths_a["node_id"].astype(int).astype(str)
 
     processor_b = BASProcessor(
-        str_watermask_tif=processor_a.watermask.rasterfile,
+        str_watermask_tif=str_fpath_updated_wm_tif,
         gdf_sections=gdf_sections_chck,
         gdf_reaches=gdf_reaches_cplx,
         attr_reachid="reach_id",
@@ -347,7 +349,7 @@ def example_6():
     processor_b.preprocessing()
     processor_b.watermask.bool_labelled = True
 
-    gdf_widths_b = processor_b.processing(dct_cfg_V6b)
+    gdf_widths_b, _ = processor_b.processing(dct_cfg_V6b)
     gdf_widths_b["reach_id"] = gdf_widths_b["reach_id"].astype(str)
     gdf_widths_b["node_id"] = gdf_widths_b["node_id"].astype(int).astype(str)
     gdf_widths_b.to_file("widths_example6.shp")
@@ -366,19 +368,19 @@ if __name__ == "__main__":
     gdf_sections.rename(mapper={"segment": "id"}, inplace=True, axis=1)
 
     # Run example 1
-    example_1()
+    #example_1()
 
     # Run example 2
-    example_2()
+    #example_2()
 
     # Run example 3
-    example_3()
+    #example_3()
 
     # Run example 4
-    example_4()
+    #example_4()
 
-    # Run example 5
-    example_5()
+    # # Run example 5
+    # example_5()
 
     # Run example 6
     example_6()
