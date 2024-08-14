@@ -27,6 +27,7 @@ import os
 import geopandas as gpd
 import numpy as np
 import rasterio as rio
+import shapely
 from rasterio.mask import mask
 from rasterio.features import shapes
 from shapely.geometry import shape, MultiPolygon
@@ -342,13 +343,15 @@ def compute_widths_from_single_watermask_scenario11(watermask, sections, buffer_
         if not gdf_waterbuffer.at[index, "geometry"].is_empty:
 
             # Extract current buffer to check
-            geom = gdf_waterbuffer.at[index, "geometry"]
+            geom = gdf_waterbuffer.at[index, "geometry"].buffer(0)
 
             # Keep all other buffers apart
-            gser_wrk = gdf_waterbuffer["geometry"].copy(deep=True)
+            gser_wrk = gdf_waterbuffer["geometry"].buffer(0).copy(deep=True)
             gser_wrk.drop(labels=index, inplace=True)
+            gser_wrk = gser_wrk[~gser_wrk.is_empty]
 
             ser_buffer_intersection = gser_wrk.intersection(geom)
+
             ser_buffer_intersection_areatot = ser_buffer_intersection.area
             gdf_waterbuffer.at[index, "intersect_area"] = ser_buffer_intersection_areatot.sum()
 
