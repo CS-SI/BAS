@@ -30,12 +30,14 @@ import geopandas as gpd
 from pyproj import CRS
 import rasterio as rio
 import shapely
+import numpy as np
 
 from tools import DisjointBboxError, FileExtensionError
 from watermask import WaterMask
 from widths import compute_widths_from_single_watermask
 
-os.environ['USE_PYGEOS'] = '0'
+
+# os.environ['USE_PYGEOS'] = '0'
 
 
 class BASProcessor:
@@ -199,27 +201,39 @@ class BASProcessor:
 
         # Clean watermask
         if dct_cfg["clean"]["bool_clean"]:
-            self.watermask.clean_watermask(str_type_clean=dct_cfg["clean"]["type_clean"],
-                                           gdf_reaches=self.gdf_reaches,
-                                           out_dir=dct_cfg["clean"]["fpath_wrkdir"],
-                                           scn_name=self.scene_name,
-                                           gdf_waterbodies=dct_cfg["clean"]["gdf_waterbodies"])
+            self.clean_watermask()
+        # self.watermask.save_wm(fmt="tif",
+        #                        bool_clean=True,
+        #                        bool_label=False,
+        #                        str_fpath_dir_out="/home/cemery/Work/git/BAS/examples",
+        #                        str_suffix="debug_example2")
+        # self.watermask.save_wm(fmt="pixc",
+        #                        bool_clean=True,
+        #                        bool_label=False,
+        #                        str_fpath_dir_out="/home/cemery/Work/git/BAS/examples",
+        #                        str_suffix="debug_example2")
+        # self.watermask.save_wm(fmt="shp",
+        #                        bool_clean=True,
+        #                        bool_label=False,
+        #                        str_fpath_dir_out="/home/cemery/Work/git/BAS/examples",
+        #                        str_suffix="debug_example2")
 
-        # Label watermask
-        if dct_cfg["label"]["bool_label"]:
-            self.watermask.label_watermask(gdf_reaches=self.gdf_reaches,
-                                           attr_reachid=self.attr_reachid,
-                                           out_dir=dct_cfg["label"]["fpath_wrkdir"],
-                                           scn_name=self.scene_name)
+        # # Label watermask
+        # if dct_cfg["label"]["bool_label"]:
+        #     self.label_watermask(gdf_reaches=self.gdf_reaches,
+        #                                    attr_reachid=self.attr_reachid,
+        #                                    out_dir=dct_cfg["label"]["fpath_wrkdir"],
+        #                                    scn_name=self.scene_name)
 
         # Prepare sections
-        gdf_wrk_sections = self.watermask.reduce_sections(gdf_reaches=self.gdf_reaches,
-                                                          attr_reachid=self.attr_reachid,
-                                                          gdf_sections_in=self.gdf_sections)
+        # gdf_wrk_sections = self.watermask.reduce_sections(gdf_reaches=self.gdf_reaches,
+        #                                                   attr_reachid=self.attr_reachid,
+        #                                                   gdf_sections_in=self.gdf_sections)
+        gdf_wrk_sections = self.gdf_sections
 
         # Process width
         print("---- Compute widths ----")
-        with rio.open(self.watermask.rasterfile) as src:
+        with rio.open(self.watermask.str_fpath_infile) as src:
             gdf_widths, _ = compute_widths_from_single_watermask(scenario=dct_cfg["widths"]["scenario"],
                                                                  watermask=src,
                                                                  sections=gdf_wrk_sections,
@@ -229,3 +243,238 @@ class BASProcessor:
         print("----- Processing : Done -----")
 
         return gdf_widths
+
+    def clean_watermask(self):
+        """Clean watermask from non-river waterbodies
+
+        Parameters
+        ----------
+        Returns
+        -------
+
+        """
+
+        print(" ---- Cleaning watermask ---- ")
+
+        # Gather reaches and project them into the watermask coordinate system
+        gdf_reaches_proj = self.gdf_reaches.to_crs(epsg=self.watermask.crs_epsg)
+
+        # Gather wm as polygons
+        gdf_wm_polygons = self.watermask.get_polygons(bool_clean=False,
+                                                      bool_label=False,
+                                                      bool_exterior_only=False,
+                                                      bool_indices=True)
+
+        # Apply regular cleaning
+        gdf_join_wm_reaches = gpd.sjoin(left_df=gdf_wm_polygons,
+                                        right_df=gdf_reaches_proj,
+                                        how="inner",
+                                        predicate="intersects")
+        npar_idx_pol_notclean = np.setdiff1d(
+            gdf_wm_polygons.index,
+            gdf_join_wm_reaches.index
+        )
+
+        # Apply waterbodies-type cleaning if activated
+        if self.dct_cfg["clean"]["gdf_waterbodies"] is not None and self.dct_cfg["clean"][
+            "type_clean"] == "waterbodies":
+            gdf_join_wm_waterbodies = gpd.sjoin(left_df=gdf_wm_polygons,
+                                                right_df=self.dct_cfg["clean"]["gdf_waterbodies"],
+                                                how="inner",
+                                                predicate="intersects")
+            npar_idx_notclean_wb = np.setdiff1d(
+                gdf_wm_polygons.index,
+                gdf_join_wm_waterbodies.index
+            )
+            npar_idx_pol_notclean = np.union1d(npar_idx_pol_notclean, npar_idx_notclean_wb)
+
+        gdfsub_notclean_wm_polygons = gdf_wm_polygons.loc[npar_idx_pol_notclean,:].copy()
+
+        # Get pixc indexes from polygon indexes
+        l_idx_pixc_notclean = [
+            element for list_ in gdfsub_notclean_wm_polygons["indices"].values for element in list_
+        ]
+
+        # Update clean flag in the watermask
+        self.watermask.update_clean_flag(mask=l_idx_pixc_notclean)
+
+
+    # def label_watermask(self, gdf_reaches=None, attr_reachid=None, out_dir=".", scn_name="scn"):
+    #     """Label watermask into individual regions associated to a unique reach each
+    #
+    #     Parameters
+    #     ----------
+    #     gdf_reaches : gpd.GeoDataFrame
+    #         with shapely.geometry.LineString geometries
+    #     attr_reachid : str
+    #     scn_name : str
+    #     out_dir : str
+    #         path towards a directory where store labeled watermask as a GeoTiff
+    #
+    #     Returns
+    #     -------
+    #
+    #     """
+    #
+    #     print(" ---- Label watermask ---- ")
+    #
+    #     if not self.bool_cleaned:
+    #         raise Warning("Watermask not yet cleaned, should be done before..")
+    #
+    #     # Gather reaches and project them into the watermask coordinate system
+    #     gser_reach_geom_proj = gdf_reaches["geometry"].to_crs(epsg=self.crs_epsg)
+    #     gdf_reaches_proj = gpd.GeoDataFrame(
+    #         pd.DataFrame({"reach_id": gdf_reaches[attr_reachid].tolist()}),
+    #         geometry=gser_reach_geom_proj,
+    #         crs=CRS(self.crs_epsg)
+    #     )
+    #
+    #     with rio.open(self.rasterfile, 'r') as raster:
+    #
+    #         # Get raw watermask band
+    #         band_clean = raster.read(1)
+    #         mask_clean = raster.read_masks(1)
+    #
+    #         # Turn watermask into a point-cloud format
+    #         band_clean_flat = band_clean.flatten()
+    #         indices = np.where(band_clean_flat == 1)[0]
+    #         l_coords = [raster.xy(i, j) for (i, j) in
+    #                     zip(np.unravel_index(indices, band_clean.shape)[0],
+    #                         np.unravel_index(indices, band_clean.shape)[1])]
+    #         l_index = [t for t in np.unravel_index(indices, band_clean.shape)]
+    #         gser_pixc = gpd.GeoSeries([Point(t[0], t[1]) for t in l_coords], crs=raster.crs)
+    #         gdf_pixc = gpd.GeoDataFrame(
+    #             pd.DataFrame({"i": [i for i in l_index[0]], "j": [j for j in l_index[1]], "indice": indices
+    #                           },
+    #                          index=pd.Index(range(len(l_coords))), dtype=np.int64),
+    #             geometry=gser_pixc,
+    #             crs=raster.crs
+    #         )
+    #
+    #         # Segment pixc into reaches
+    #         gdf_label = gpd.sjoin_nearest(left_df=gdf_pixc, right_df=gdf_reaches_proj, max_distance=3000., how="inner",
+    #                                       distance_col="dist")
+    #         if len(gdf_reaches_proj) < 254:
+    #             band_label_flat = 255 * np.ones(band_clean.shape, dtype=np.uint8).flatten()
+    #             band_dtype = rio.uint8
+    #             raster_nodata = 255
+    #         else:
+    #             band_label_flat = -1 * np.ones(band_clean.shape, dtype=np.int16).flatten()
+    #             band_dtype = rio.int16
+    #             raster_nodata = -1
+    #         band_label_flat[gdf_label["indice"].to_numpy()] = gdf_label["index_right"].to_numpy()
+    #         band_label = band_label_flat.reshape(band_clean.shape)
+    #
+    #         # for width extraction later, can't have a region with value 0
+    #         band_label = np.where(band_label!=raster_nodata, band_label+1, band_label)
+    #
+    #         # Save clean watermask into a new GeoTiff file
+    #         self.rasterfile = os.path.join(out_dir, scn_name + "_label.tif")
+    #         with rio.open(
+    #                 self.rasterfile,
+    #                 mode="w",
+    #                 driver="GTiff",
+    #                 height=band_label.shape[0],
+    #                 width=band_label.shape[1],
+    #                 count=1,
+    #                 dtype=band_dtype,
+    #                 crs=self.crs,
+    #                 transform=raster.transform,
+    #                 nodata=raster_nodata
+    #         ) as new_dataset:
+    #             new_dataset.write(band_label, 1)
+    #
+    #     self.bool_labelled = True
+    #     return self.rasterfile
+    #
+    # def reduce_sections(self, gdf_reaches=None, attr_reachid=None, gdf_sections_in=None):
+    #     """Reduce sections geometry to its associated region
+    #
+    #     Parameters
+    #     ----------
+    #     gdf_reaches : gpd.GeoDataFrame
+    #         with shapely.geometry.LineString geometries
+    #     attr_reachid : str
+    #     gdf_sections_in : gpd.GeoDataFrame
+    #         input sections geometry
+    #
+    #     Returns
+    #     -------
+    #     gdf_sections_out : gpd.GeoDataFrame
+    #         reduced sections geometry
+    #
+    #     """
+    #
+    #     print(" ---- Reduce sections ---- ")
+    #
+    #     # Check if section geometries are in the right coordinate system
+    #     if gdf_sections_in.crs != self.crs:
+    #         raise ValueError("Sections geometries and watermask raster has to be in the same coordinate system")
+    #
+    #     with rio.open(self.rasterfile) as src:
+    #
+    #         band = src.read(1)
+    #
+    #         # Vectorize regions from watermask raster
+    #         dct_regions = {}
+    #         for shape, value in shapes(band, mask=(band > 0), transform=src.transform):
+    #
+    #             l_polygons = []
+    #             for coords in shape["coordinates"]:
+    #                 l_polygons.append(Polygon(coords))
+    #             if len(l_polygons) > 1:
+    #                 big_pol = l_polygons[0]
+    #                 small_pol = MultiPolygon(l_polygons[1:])
+    #                 polygon = big_pol.difference(small_pol)
+    #             else:
+    #                 polygon = l_polygons[0]
+    #
+    #             if value in dct_regions.keys():
+    #                 dct_regions[int(value)]["all"].append(polygon)
+    #             else:
+    #                 dct_regions[int(value)] = {}
+    #                 dct_regions[int(value)]["all"] = [polygon]
+    #
+    #         for key, value in dct_regions.items():
+    #             dct_regions[key]["region"] = MultiPolygon(dct_regions[key]["all"])
+    #
+    #         # Reduce sections geometry to within the associated region
+    #         if self.bool_labelled :
+    #             l_gdfsub_sections = []
+    #             for index in dct_regions.keys():
+    #
+    #                 if index != src.nodata:
+    #
+    #                     # Extract sections associated to unique current reach
+    #                     reach_id = gdf_reaches.at[index-1, attr_reachid]
+    #                     gdfsub_sections_byreach = gdf_sections_in[gdf_sections_in[attr_reachid] == reach_id].copy(
+    #                         deep=True)
+    #
+    #                     # Get current region
+    #                     pol_region = dct_regions[index]["region"]
+    #
+    #                     # In sections subset, keep only sections that intersect current region
+    #                     ser_bool_intersects = gdfsub_sections_byreach["geometry"].intersects(pol_region)
+    #                     gdfsub_sections_byreach_onregion = gdfsub_sections_byreach[ser_bool_intersects].copy(deep=True)
+    #
+    #                     # For remaining stations/sections, reduce their geometry to within the current region
+    #                     if len(gdfsub_sections_byreach_onregion) > 0:
+    #                         gdfsub_sections_byreach_onregion["geometry"] = gdfsub_sections_byreach_onregion[
+    #                             "geometry"].apply( lambda line: reduce_section(line, pol_region) )
+    #                     l_gdfsub_sections.append(gdfsub_sections_byreach_onregion)
+    #
+    #             # Gather all sections
+    #             gdf_sections_wrk_out = pd.concat(l_gdfsub_sections)
+    #
+    #         else:
+    #             gdf_sections_wrk_out = gdf_sections_in.copy(deep=True)
+    #
+    #             # If not label step, region is a unique polygon with value 1
+    #             pol_region = dct_regions[1]["region"]
+    #
+    #             # Reduce section geometry
+    #             gdf_sections_wrk_out["geometry"] = gdf_sections_in["geometry"].apply(lambda line: reduce_section(line, pol_region))
+    #
+    #         gdf_sections_out = gdf_sections_wrk_out.copy(deep=True)
+    #
+    #     return gdf_sections_out
