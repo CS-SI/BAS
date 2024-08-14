@@ -27,9 +27,11 @@ derive a width estimation at said-nodes observed within the mask
 import os
 from datetime import datetime
 import geopandas as gpd
+import pandas as pd
 from pyproj import CRS
 import rasterio as rio
 import shapely
+from shapely.geometry import MultiLineString, LineString, MultiPolygon
 import numpy as np
 
 from tools import DisjointBboxError, FileExtensionError
@@ -38,6 +40,33 @@ from widths import compute_widths_from_single_watermask
 
 
 # os.environ['USE_PYGEOS'] = '0'
+
+def reduce_section(lin_long_in, pol_in):
+    """Reduce linestring to the shortest linestring with the control polygon
+
+    Parameters
+    ----------
+    lin_long_in : LineString
+    pol_in : Polygon
+
+    Returns
+    -------
+    lin_out : LineString
+
+    """
+
+    lin_cut = pol_in.intersection(lin_long_in)
+    if isinstance(lin_cut, MultiLineString):
+        l_xy = []
+        for geom in lin_cut.geoms:
+            l_xy += list(geom.coords)
+        lin_out = LineString(l_xy)
+    elif isinstance(lin_cut, LineString):
+        lin_out = lin_cut
+    else:
+        raise NotImplementedError
+
+    return lin_out
 
 
 class BASProcessor:
@@ -173,7 +202,7 @@ class BASProcessor:
                         dct_cfg[key][subkey] = self.dct_cfg[key][subkey]
         return dct_cfg
 
-    def processing(self, dct_cfg=None):
+    def processing(self, dct_cfg=None, str_fpath_dir_out="."):
         """Processing : extraction of widths from watermask
 
         Parameters
@@ -212,31 +241,17 @@ class BASProcessor:
         if dct_cfg["label"]["bool_label"]:
             self.label_watermask()
 
-        self.watermask.save_wm(fmt="tif",
-                               bool_clean=True,
-                               bool_label=True,
-                               str_fpath_dir_out="/home/cemery/Work/git/BAS/examples",
-                               str_suffix="debug_example4")
-        self.watermask.save_wm(fmt="pixc",
-                               bool_clean=True,
-                               bool_label=True,
-                               str_fpath_dir_out="/home/cemery/Work/git/BAS/examples",
-                               str_suffix="debug_example4")
-        self.watermask.save_wm(fmt="shp",
-                               bool_clean=True,
-                               bool_label=True,
-                               str_fpath_dir_out="/home/cemery/Work/git/BAS/examples",
-                               str_suffix="debug_example4")
-
         # Prepare sections
-        # gdf_wrk_sections = self.watermask.reduce_sections(gdf_reaches=self.gdf_reaches,
-        #                                                   attr_reachid=self.attr_reachid,
-        #                                                   gdf_sections_in=self.gdf_sections)
-        gdf_wrk_sections = self.gdf_sections
+        gdf_wrk_sections = self.reduce_sections(dct_cfg)
 
         # Process width
         print("---- Compute widths ----")
-        with rio.open(self.watermask.str_fpath_infile) as src:
+        str_fpath_wm_tif = self.watermask.save_wm(fmt="tif",
+                                                  bool_clean=dct_cfg["clean"]["bool_clean"],
+                                                  bool_label=dct_cfg["label"]["bool_label"],
+                                                  str_fpath_dir_out=str_fpath_dir_out,
+                                                  str_suffix="readytouse")
+        with rio.open(str_fpath_wm_tif) as src:
             gdf_widths, _ = compute_widths_from_single_watermask(scenario=dct_cfg["widths"]["scenario"],
                                                                  watermask=src,
                                                                  sections=gdf_wrk_sections,
@@ -245,7 +260,7 @@ class BASProcessor:
         print("")
         print("----- Processing : Done -----")
 
-        return gdf_widths
+        return gdf_widths, str_fpath_wm_tif
 
     def clean_watermask(self, dct_cfg=None):
         """Clean watermask from non-river waterbodies
@@ -318,7 +333,7 @@ class BASProcessor:
         print(" ---- Label watermask ---- ")
 
         # Gather reaches and project them into the watermask coordinate system
-        gdf_reaches_proj = self.gdf_reaches.loc[:,[self.attr_reachid, "geometry"]].to_crs(epsg=self.watermask.crs_epsg)
+        gdf_reaches_proj = self.gdf_reaches.loc[:, [self.attr_reachid, "geometry"]].to_crs(epsg=self.watermask.crs_epsg)
 
         # Associate each pixel from wm to the closest reach
         gdf_label = gpd.sjoin_nearest(left_df=self.watermask.gdf_wm_as_pixc,
@@ -331,96 +346,53 @@ class BASProcessor:
         }
         self.watermask.update_label_flag(dct_label_update)
 
+    def reduce_sections(self, dct_cfg=None):
+        """Reduce sections geometry to its associated region
 
+        Parameters
+        ----------
 
-    # def reduce_sections(self, gdf_reaches=None, attr_reachid=None, gdf_sections_in=None):
-    #     """Reduce sections geometry to its associated region
-    #
-    #     Parameters
-    #     ----------
-    #     gdf_reaches : gpd.GeoDataFrame
-    #         with shapely.geometry.LineString geometries
-    #     attr_reachid : str
-    #     gdf_sections_in : gpd.GeoDataFrame
-    #         input sections geometry
-    #
-    #     Returns
-    #     -------
-    #     gdf_sections_out : gpd.GeoDataFrame
-    #         reduced sections geometry
-    #
-    #     """
-    #
-    #     print(" ---- Reduce sections ---- ")
-    #
-    #     # Check if section geometries are in the right coordinate system
-    #     if gdf_sections_in.crs != self.crs:
-    #         raise ValueError("Sections geometries and watermask raster has to be in the same coordinate system")
-    #
-    #     with rio.open(self.rasterfile) as src:
-    #
-    #         band = src.read(1)
-    #
-    #         # Vectorize regions from watermask raster
-    #         dct_regions = {}
-    #         for shape, value in shapes(band, mask=(band > 0), transform=src.transform):
-    #
-    #             l_polygons = []
-    #             for coords in shape["coordinates"]:
-    #                 l_polygons.append(Polygon(coords))
-    #             if len(l_polygons) > 1:
-    #                 big_pol = l_polygons[0]
-    #                 small_pol = MultiPolygon(l_polygons[1:])
-    #                 polygon = big_pol.difference(small_pol)
-    #             else:
-    #                 polygon = l_polygons[0]
-    #
-    #             if value in dct_regions.keys():
-    #                 dct_regions[int(value)]["all"].append(polygon)
-    #             else:
-    #                 dct_regions[int(value)] = {}
-    #                 dct_regions[int(value)]["all"] = [polygon]
-    #
-    #         for key, value in dct_regions.items():
-    #             dct_regions[key]["region"] = MultiPolygon(dct_regions[key]["all"])
-    #
-    #         # Reduce sections geometry to within the associated region
-    #         if self.bool_labelled :
-    #             l_gdfsub_sections = []
-    #             for index in dct_regions.keys():
-    #
-    #                 if index != src.nodata:
-    #
-    #                     # Extract sections associated to unique current reach
-    #                     reach_id = gdf_reaches.at[index-1, attr_reachid]
-    #                     gdfsub_sections_byreach = gdf_sections_in[gdf_sections_in[attr_reachid] == reach_id].copy(
-    #                         deep=True)
-    #
-    #                     # Get current region
-    #                     pol_region = dct_regions[index]["region"]
-    #
-    #                     # In sections subset, keep only sections that intersect current region
-    #                     ser_bool_intersects = gdfsub_sections_byreach["geometry"].intersects(pol_region)
-    #                     gdfsub_sections_byreach_onregion = gdfsub_sections_byreach[ser_bool_intersects].copy(deep=True)
-    #
-    #                     # For remaining stations/sections, reduce their geometry to within the current region
-    #                     if len(gdfsub_sections_byreach_onregion) > 0:
-    #                         gdfsub_sections_byreach_onregion["geometry"] = gdfsub_sections_byreach_onregion[
-    #                             "geometry"].apply( lambda line: reduce_section(line, pol_region) )
-    #                     l_gdfsub_sections.append(gdfsub_sections_byreach_onregion)
-    #
-    #             # Gather all sections
-    #             gdf_sections_wrk_out = pd.concat(l_gdfsub_sections)
-    #
-    #         else:
-    #             gdf_sections_wrk_out = gdf_sections_in.copy(deep=True)
-    #
-    #             # If not label step, region is a unique polygon with value 1
-    #             pol_region = dct_regions[1]["region"]
-    #
-    #             # Reduce section geometry
-    #             gdf_sections_wrk_out["geometry"] = gdf_sections_in["geometry"].apply(lambda line: reduce_section(line, pol_region))
-    #
-    #         gdf_sections_out = gdf_sections_wrk_out.copy(deep=True)
-    #
-    #     return gdf_sections_out
+        Returns
+        -------
+        gdf_sections_out : gpd.GeoDataFrame
+            reduced sections geometry
+
+        """
+
+        print(" ---- Reduce sections ---- ")
+
+        # Check config_dct
+        if dct_cfg is None:
+            dct_cfg = self.dct_cfg
+
+        gdf_wm_labelled_pol = self.watermask.get_polygons(
+            bool_clean=dct_cfg["clean"]["bool_clean"],
+            bool_label=dct_cfg["label"]["bool_label"],
+            bool_indices=False,
+            bool_exterior_only=False
+        )
+
+        l_gdfsub_sections = []
+        for label, group in gdf_wm_labelled_pol.groupby(by="label").groups.items():
+
+            pol_region = MultiPolygon(gdf_wm_labelled_pol.loc[group, "geometry"].tolist())
+
+            # Extract sections associated to unique current reach
+            reach_id = self.gdf_reaches.at[label, self.attr_reachid]
+            gdfsub_sections_byreach = self.gdf_sections[self.gdf_sections[self.attr_reachid] == reach_id].copy(
+                deep=True)
+
+            # In sections subset, keep only sections that intersect current region
+            ser_bool_intersects = gdfsub_sections_byreach["geometry"].intersects(pol_region)
+            gdfsub_sections_byreach_onregion = gdfsub_sections_byreach[ser_bool_intersects].copy(deep=True)
+
+            # For remaining stations/sections, reduce their geometry to within the current region
+            if len(gdfsub_sections_byreach_onregion) > 0:
+                gdfsub_sections_byreach_onregion["geometry"] = gdfsub_sections_byreach_onregion[
+                    "geometry"].apply(lambda line: reduce_section(line, pol_region))
+            l_gdfsub_sections.append(gdfsub_sections_byreach_onregion)
+
+        # Gather all sections
+        gdf_sections_out = pd.concat(l_gdfsub_sections)
+
+        return gdf_sections_out
