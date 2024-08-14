@@ -42,7 +42,12 @@ from widths import compute_widths_from_single_watermask
 
 class BASProcessor:
 
-    def __init__(self, str_watermask_tif=None, gdf_sections=None, gdf_reaches=None, attr_reachid=None, str_proj="proj",
+    def __init__(self,
+                 str_watermask_tif=None,
+                 gdf_sections=None,
+                 gdf_reaches=None,
+                 attr_reachid=None,
+                 str_proj="proj",
                  str_provider=None,
                  str_datetime=None):
         """Class constructor
@@ -201,22 +206,22 @@ class BASProcessor:
 
         # Clean watermask
         if dct_cfg["clean"]["bool_clean"]:
-            self.clean_watermask()
-        # self.watermask.save_wm(fmt="tif",
-        #                        bool_clean=True,
-        #                        bool_label=False,
-        #                        str_fpath_dir_out="/home/cemery/Work/git/BAS/examples",
-        #                        str_suffix="debug_example2")
-        # self.watermask.save_wm(fmt="pixc",
-        #                        bool_clean=True,
-        #                        bool_label=False,
-        #                        str_fpath_dir_out="/home/cemery/Work/git/BAS/examples",
-        #                        str_suffix="debug_example2")
-        # self.watermask.save_wm(fmt="shp",
-        #                        bool_clean=True,
-        #                        bool_label=False,
-        #                        str_fpath_dir_out="/home/cemery/Work/git/BAS/examples",
-        #                        str_suffix="debug_example2")
+            self.clean_watermask(dct_cfg)
+        self.watermask.save_wm(fmt="tif",
+                               bool_clean=True,
+                               bool_label=False,
+                               str_fpath_dir_out="/home/cemery/Work/git/BAS/examples",
+                               str_suffix="debug_example3")
+        self.watermask.save_wm(fmt="pixc",
+                               bool_clean=True,
+                               bool_label=False,
+                               str_fpath_dir_out="/home/cemery/Work/git/BAS/examples",
+                               str_suffix="debug_example3")
+        self.watermask.save_wm(fmt="shp",
+                               bool_clean=True,
+                               bool_label=False,
+                               str_fpath_dir_out="/home/cemery/Work/git/BAS/examples",
+                               str_suffix="debug_example3")
 
         # # Label watermask
         # if dct_cfg["label"]["bool_label"]:
@@ -244,7 +249,7 @@ class BASProcessor:
 
         return gdf_widths
 
-    def clean_watermask(self):
+    def clean_watermask(self, dct_cfg=None):
         """Clean watermask from non-river waterbodies
 
         Parameters
@@ -255,6 +260,10 @@ class BASProcessor:
         """
 
         print(" ---- Cleaning watermask ---- ")
+
+         # Check config_dct
+        if dct_cfg is None:
+            dct_cfg=self.dct_cfg
 
         # Gather reaches and project them into the watermask coordinate system
         gdf_reaches_proj = self.gdf_reaches.to_crs(epsg=self.watermask.crs_epsg)
@@ -271,24 +280,32 @@ class BASProcessor:
                                         how="inner",
                                         predicate="intersects")
         npar_idx_pol_notclean = np.setdiff1d(
-            gdf_wm_polygons.index,
-            gdf_join_wm_reaches.index
+            np.unique(gdf_wm_polygons.index),
+            np.unique(gdf_join_wm_reaches.index)
         )
 
         # Apply waterbodies-type cleaning if activated
-        if self.dct_cfg["clean"]["gdf_waterbodies"] is not None and self.dct_cfg["clean"][
-            "type_clean"] == "waterbodies":
+        if dct_cfg["clean"]["gdf_waterbodies"] is not None and dct_cfg["clean"]["type_clean"] == "waterbodies":
+
+            if not isinstance(dct_cfg["clean"]["gdf_waterbodies"], gpd.GeoDataFrame):
+                raise TypeError
+            else:
+                gdf_waterbodies_wrk = dct_cfg["clean"]["gdf_waterbodies"].to_crs(gdf_wm_polygons.crs)
+
             gdf_join_wm_waterbodies = gpd.sjoin(left_df=gdf_wm_polygons,
-                                                right_df=self.dct_cfg["clean"]["gdf_waterbodies"],
+                                                right_df=gdf_waterbodies_wrk,
                                                 how="inner",
                                                 predicate="intersects")
+
             npar_idx_notclean_wb = np.setdiff1d(
-                gdf_wm_polygons.index,
-                gdf_join_wm_waterbodies.index
+                np.unique(gdf_wm_polygons.index),
+                np.unique(gdf_join_wm_waterbodies.index)
             )
-            npar_idx_pol_notclean = np.union1d(npar_idx_pol_notclean, npar_idx_notclean_wb)
+
+            npar_idx_pol_notclean = np.intersect1d(npar_idx_pol_notclean, npar_idx_notclean_wb)
 
         gdfsub_notclean_wm_polygons = gdf_wm_polygons.loc[npar_idx_pol_notclean,:].copy()
+        gdfsub_notclean_wm_polygons.loc[:,["clean", "label", "geometry"]].to_file("/home/cemery/Work/git/BAS/examples/wm_notclean.shp")
 
         # Get pixc indexes from polygon indexes
         l_idx_pixc_notclean = [
