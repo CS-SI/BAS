@@ -37,7 +37,7 @@ from rasterio.features import shapes, rasterize
 from shapely.geometry import shape, Point, Polygon, MultiPolygon, LineString, MultiLineString
 from shapely.ops import linemerge
 
-from tools import FileExtensionError
+from tools import FileExtensionError, DimensionError
 
 
 # os.environ['USE_PYGEOS'] = '0'
@@ -151,13 +151,19 @@ class WaterMask:
         return klass
 
     def band_to_pixc(self, npar_band, raster_src, **kwargs):
-        """
+        """Transform the input raster band into a pixel-cloud like object in a geodataframe for easier manipulation
 
         :param npar_band:
         :param raster_src:
         :param kwargs:
         :return:
         """
+
+        # Chcek input npar_band
+        if not isinstance(npar_band, np.ndarray):
+            raise TypeError(f"Input npar_band must be of class np.ndarray, got {npar_band.__class__}")
+        if npar_band.ndim != 2:
+            raise DimensionError(f"Input npar_band has {npar_band.ndim} dimensions, expecting 2.")
 
         # Turn watermask band into a point-cloud format
         band_flat = npar_band.flatten()
@@ -181,6 +187,7 @@ class WaterMask:
             ),
             crs=raster_src.crs
         )
+        self.gdf_wm_as_pixc = gdf_band_to_pixc
 
         return gdf_band_to_pixc
 
@@ -224,16 +231,10 @@ class WaterMask:
         elif self.coordsyst == "proj":
 
             src = osr.SpatialReference()
-            # src.ImportFromEPSG(self.crs.to_epsg(confidence_threshold=20))
             src.ImportFromProj4(self.crs.to_proj4())
 
             tgt = osr.SpatialReference()
             tgt.ImportFromEPSG(4326)
-            # Before GDAL 3.0 the axis order was longitude first, latitude later.
-            # Starting with GDAL 3.0 CRS created with the "EPSG:4326" or "WGS84"
-            # strings use the latitude first, longitude second axis order
-            # if osgeo.__version__ >= "3.6.4":
-            #     tgt.SetAxisMappingStrategy(osr.OAMS_TRADITIONAL_GIS_ORDER)
 
             osr_transform = osr.CoordinateTransformation(src, tgt)
 
@@ -256,7 +257,7 @@ class WaterMask:
         return minlon, minlat, maxlon, maxlat
 
     def get_band(self, bool_clean=True, bool_label=True, as_ma=True):
-        """ Return wm as band with activated flags
+        """ Return wm as band-like format with activated flags
 
         :param bool_clean:
         :param bool_label:
@@ -294,12 +295,19 @@ class WaterMask:
         return npar_band
 
     def get_polygons(self, bool_clean=True, bool_label=True, bool_indices=True, bool_exterior_only=True):
+        """ Turn wm into a set of polygons given clean and label flags for vectorial studies
+
+        :param bool_clean:
+        :param bool_label:
+        :param bool_indices:
+        :param bool_exterior_only:
+        :return:
+        """
 
         npar_band = self.get_band(bool_clean, bool_label, as_ma=True)
 
         l_pol_wm = []
         l_pol_value = []
-        l_indices = []
         for geom, value in shapes(npar_band.data,
                                   mask=(~npar_band.mask),
                                   transform=self.transform):
@@ -317,7 +325,7 @@ class WaterMask:
         gdf_wm_as_pol = gpd.GeoDataFrame(
             pd.DataFrame({"label": l_pol_value,
                           "clean": [1]*len(l_pol_value),
-                          "indices": [0]*len(l_pol_value)}),
+                          "indices": None}),
             geometry=gpd.GeoSeries(
                 l_pol_wm, crs=self.crs
             ),
@@ -329,12 +337,13 @@ class WaterMask:
                                  right_df=gdf_wm_as_pol,
                                  how="inner",
                                  predicate="within")
-            gdf_wm_as_pol["indices"] = gdf_join["index_right"]
+            for index_right, group in gdf_join.groupby(by="index_right").groups.items():
+                gdf_wm_as_pol.at[index_right, "indices"] = list(group)
 
         return gdf_wm_as_pol
 
     def update_clean_flag(self, mask=None):
-        """
+        """ Update clean flags: for input indexes in mask, turn clean flag to 0
 
         :param mask:
         :return:
@@ -343,7 +352,7 @@ class WaterMask:
         self.gdf_wm_as_pixc.loc[mask, "clean"] = 0
 
     def update_label_flag(self, dct_label=None, dtype_labelled=None):
-        """
+        """ Update label values
 
         :param dct_label:
         :return:
@@ -410,7 +419,10 @@ class WaterMask:
         elif fmt == "shp":
 
             str_fpath_wm_out_pixc_shp = os.path.join(str_fpath_dir_out, str_basename + ".shp")
+
             gdf_polygons = self.get_polygons(bool_clean=bool_clean, bool_label=bool_label, bool_exterior_only=False)
+            gdf_polygons["indices"] = gdf_polygons["indices"].apply(str)
+
             gdf_polygons.to_file(str_fpath_wm_out_pixc_shp)
 
         else:
