@@ -74,9 +74,10 @@ def example_1():
         str_provider="EO"
     )
     processor.preprocessing()
-    gdf_widths, _ = processor.processing(dct_cfg_V1)
+    processor.processing(dct_cfg_V1)
+    gdf_widths, _ = processor.postprocessing(dct_cfg_V1)
     print(gdf_widths)
-    # gdf_widths.to_file("widths_example1.shp")
+    gdf_widths.to_file("widths_example1.shp")
 
     print("")
     print("===== BASProcessing Example #1 = END =====")
@@ -116,7 +117,8 @@ def example_2():
         str_provider="EO"
     )
     processor.preprocessing()
-    gdf_widths, _ = processor.processing(dct_cfg_V2)
+    processor.processing(dct_cfg_V2)
+    gdf_widths, _ = processor.postprocessing(dct_cfg_V2)
     print(gdf_widths)
     gdf_widths.to_file("widths_example2.shp")
 
@@ -158,7 +160,8 @@ def example_3():
         str_provider="EO"
     )
     processor.preprocessing()
-    gdf_widths, _ = processor.processing(dct_cfg_V3)
+    processor.processing(dct_cfg_V3)
+    gdf_widths, _ = processor.postprocessing(dct_cfg_V3)
     print(gdf_widths)
     gdf_widths.to_file("widths_example3.shp")
 
@@ -200,7 +203,8 @@ def example_4():
         str_provider="EO"
     )
     processor.preprocessing()
-    gdf_widths, _ = processor.processing(dct_cfg_V4)
+    processor.processing(dct_cfg_V4)
+    gdf_widths, _ = processor.postprocessing(dct_cfg_V4)
     print(gdf_widths)
     gdf_widths.to_file("widths_example4.shp")
 
@@ -233,8 +237,6 @@ def example_5():
                                               dct_attr=dct_geom_attr)
     obj_rivergeom.draw_allreaches_centerline()
     gdf_sections_ortho = obj_rivergeom.draw_allreaches_sections(type="ortho")
-    print(gdf_sections_ortho)
-    print("")
 
     # Set configs #5
     dct_cfg_V5 = {"clean": {"bool_clean": True,
@@ -260,9 +262,14 @@ def example_5():
         str_provider="EO"
     )
     processor_a.preprocessing()
-    gdf_widths_a, _ = processor_a.processing(dct_cfg_V5)
+
+    processor_a.processing(dct_cfg_V5)
+
+    gdf_widths_a, _ = processor_a.postprocessing(dct_cfg_V5)
+
     gdf_widths_a["reach_id"] = gdf_widths_a["reach_id"].astype(str)
     gdf_widths_a["node_id"] = gdf_widths_a["node_id"].astype(int).astype(str)
+    print(gdf_widths_a)
     gdf_widths_a.to_file("widths_example5.shp")
 
     print("")
@@ -293,18 +300,22 @@ def example_6():
                                               bool_edge=False,
                                               dct_attr=dct_geom_attr)
     obj_rivergeom.draw_allreaches_centerline()
-    gdf_sections_ortho = obj_rivergeom.draw_allreaches_sections(type="ortho")
+
+    gdf_sections_ortho = obj_rivergeom.draw_allreaches_sections(type="ortho", flt_factor_width=15.)
+    gdf_sections_ortho.to_file("/home/cemery/Work/git/BAS/examples/ex6_sections_ortho.shp")
+
     gdf_sections_chck = obj_rivergeom.draw_allreaches_sections(type="chck")
+    gdf_sections_chck.to_file("/home/cemery/Work/git/BAS/examples/ex6_sections_chck.shp")
 
     # Set configs #6
     dct_cfg_V6a = {"clean": {"bool_clean": True,
                              "type_clean": "waterbodies",
-                             "fpath_wrkdir": "/home/charlotte/Work/AT-SWOT/cal-val/git/BAS/examples",
+                             "fpath_wrkdir": "/home/cemery/Work/git/BAS/examples",
                              "gdf_waterbodies": gdf_waterbodies
                              },
                    "label": {"bool_label": True,
                              "type_label": "base",
-                             "fpath_wrkdir": "/home/charlotte/Work/AT-SWOT/cal-val/git/BAS/examples"
+                             "fpath_wrkdir": "/home/cemery/Work/git/BAS/examples"
                              },
                    "widths": {"scenario": 11
                               }
@@ -312,12 +323,12 @@ def example_6():
 
     dct_cfg_V6b = {"clean": {"bool_clean": False,
                              "type_clean": "waterbodies",
-                             "fpath_wrkdir": "/home/charlotte/Work/AT-SWOT/cal-val/git/BAS/examples",
+                             "fpath_wrkdir": "/home/cemery/Work/git/BAS/examples",
                              "gdf_waterbodies": gdf_waterbodies
                              },
                    "label": {"bool_label": False,
                              "type_label": "base",
-                             "fpath_wrkdir": "/home/charlotte/Work/AT-SWOT/cal-val/git/BAS/examples"
+                             "fpath_wrkdir": "/home/cemery/Work/git/BAS/examples"
                              },
                    "widths": {"scenario": 0
                               }
@@ -333,9 +344,14 @@ def example_6():
         str_provider="EO"
     )
     processor_a.preprocessing()
-    gdf_widths_a, str_fpath_updated_wm_tif = processor_a.processing(dct_cfg_V6a)
+
+    processor_a.processing(dct_cfg_V6a)
+
+    gdf_widths_a, str_fpath_updated_wm_tif = processor_a.postprocessing(dct_cfg_V6a)
     gdf_widths_a["reach_id"] = gdf_widths_a["reach_id"].astype(str)
     gdf_widths_a["node_id"] = gdf_widths_a["node_id"].astype(int).astype(str)
+    print(gdf_widths_a)
+    gdf_widths_a.to_file("widths_a_example6.shp")
 
     processor_b = BASProcessor(
         str_watermask_tif=str_fpath_updated_wm_tif,
@@ -347,12 +363,17 @@ def example_6():
     )
 
     processor_b.preprocessing()
-    processor_b.watermask.bool_labelled = True
 
-    gdf_widths_b, _ = processor_b.processing(dct_cfg_V6b)
+    processor_b.processing(dct_cfg_V6b)
+
+    dct_cfg_V6b["clean"]["bool_clean"] = True
+    dct_cfg_V6b["label"]["bool_label"] = True
+    gdf_widths_b, _ = processor_b.postprocessing(dct_cfg_V6b)
+
     gdf_widths_b["reach_id"] = gdf_widths_b["reach_id"].astype(str)
     gdf_widths_b["node_id"] = gdf_widths_b["node_id"].astype(int).astype(str)
-    gdf_widths_b.to_file("widths_example6.shp")
+    print(gdf_widths_b)
+    gdf_widths_b.to_file("widths_b_example6.shp")
 
     print("")
     print("===== BASProcessing Example #6 = END =====")
@@ -368,19 +389,19 @@ if __name__ == "__main__":
     gdf_sections.rename(mapper={"segment": "id"}, inplace=True, axis=1)
 
     # Run example 1
-    #example_1()
+    example_1()
 
     # Run example 2
-    #example_2()
+    example_2()
 
     # Run example 3
-    #example_3()
+    example_3()
 
     # Run example 4
-    #example_4()
+    example_4()
 
     # # Run example 5
-    # example_5()
+    example_5()
 
     # Run example 6
     example_6()
