@@ -241,26 +241,8 @@ class BASProcessor:
         if dct_cfg["label"]["bool_label"]:
             self.label_watermask()
 
-        # Prepare sections
-        gdf_wrk_sections = self.reduce_sections(dct_cfg)
-
-        # Process width
-        print("---- Compute widths ----")
-        str_fpath_wm_tif = self.watermask.save_wm(fmt="tif",
-                                                  bool_clean=dct_cfg["clean"]["bool_clean"],
-                                                  bool_label=dct_cfg["label"]["bool_label"],
-                                                  str_fpath_dir_out=str_fpath_dir_out,
-                                                  str_suffix="readytouse")
-        with rio.open(str_fpath_wm_tif) as src:
-            gdf_widths, _ = compute_widths_from_single_watermask(scenario=dct_cfg["widths"]["scenario"],
-                                                                 watermask=src,
-                                                                 sections=gdf_wrk_sections,
-                                                                 buffer_length=8.0 * self.watermask.res)
-
         print("")
         print("----- Processing : Done -----")
-
-        return gdf_widths, str_fpath_wm_tif
 
     def clean_watermask(self, dct_cfg=None):
         """Clean watermask from non-river waterbodies
@@ -396,3 +378,35 @@ class BASProcessor:
         gdf_sections_out = pd.concat(l_gdfsub_sections)
 
         return gdf_sections_out
+
+    def postprocessing(self, dct_cfg=None, str_fpath_dir_out="."):
+        """
+
+        :param dct_cfg:
+        :param str_fpath_dir_out:
+        :return:
+        """
+
+        print("----- WidthProcessing = PostProcessing -----")
+        print("")
+
+        # Prepare sections
+        gdf_wrk_sections = self.reduce_sections(dct_cfg)
+
+        # Process width
+        print("---- Compute widths ----")
+        str_fpath_wm_tif = self.watermask.save_wm(fmt="tif",
+                                                  bool_clean=dct_cfg["clean"]["bool_clean"],
+                                                  bool_label=dct_cfg["label"]["bool_label"],
+                                                  str_fpath_dir_out=str_fpath_dir_out,
+                                                  str_suffix="readytouse")
+        with rio.open(str_fpath_wm_tif) as src:
+            gdf_widths, _ = compute_widths_from_single_watermask(scenario=dct_cfg["widths"]["scenario"],
+                                                                 watermask=src,
+                                                                 sections=gdf_wrk_sections,
+                                                                 buffer_length=8.0 * self.watermask.res)
+
+        print("")
+        print("----- PostProcessing : Done -----")
+
+        return gdf_widths, str_fpath_wm_tif
