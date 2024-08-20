@@ -387,8 +387,8 @@ class RiverGeomProduct:
         if self.bool_edge:
 
             npar_int_wrk_nodeid = nodeid_subset[npar_int_xs_argsrt]
-            npar_flt_wrk_pwidth = pwidth_subset
-            npar_flt_wrk_pwse = pwse_subset
+            npar_flt_wrk_pwidth = pwidth_subset[npar_int_xs_argsrt]
+            npar_flt_wrk_pwse = pwse_subset[npar_int_xs_argsrt]
 
             # Get prior node coords
             npar_flt_wrk_plon = plon_subset[npar_int_xs_argsrt]
@@ -403,13 +403,13 @@ class RiverGeomProduct:
             pwidth_subset = self.npar_flt_nodegrp_pwidth[np.where(self.npar_int_nodegrp_reachid == reachid)]
             npar_flt_wrk_pwidth = np.zeros((pwidth_subset.size + 2,))
             npar_flt_wrk_pwidth[0] = np.mean(pwidth_subset)
-            npar_flt_wrk_pwidth[1:-1] = pwidth_subset
+            npar_flt_wrk_pwidth[1:-1] = pwidth_subset[npar_int_xs_argsrt]
             npar_flt_wrk_pwidth[-1] = np.mean(pwidth_subset)
 
             pwse_subset = self.npar_flt_nodegrp_pwse[np.where(self.npar_int_nodegrp_reachid == reachid)]
             npar_flt_wrk_pwse = np.zeros((pwse_subset.size + 2,))
             npar_flt_wrk_pwse[0] = np.mean(pwse_subset)
-            npar_flt_wrk_pwse[1:-1] = pwse_subset
+            npar_flt_wrk_pwse[1:-1] = pwse_subset[npar_int_xs_argsrt]
             npar_flt_wrk_pwse[-1] = np.mean(pwse_subset)
 
             # Get prior node coords
