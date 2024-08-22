@@ -1,4 +1,4 @@
-name: BAS
+name: BAS_py38
 channels:
   - conda-forge
   - defaults

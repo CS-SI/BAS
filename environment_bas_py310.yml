@@ -1,4 +1,4 @@
-name: BAS_up
+name: BAS_310
 channels:
   - defaults
 dependencies:

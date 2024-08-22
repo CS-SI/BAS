@@ -14,7 +14,7 @@ Main version available on github : https://github.com/CS-SI/BAS
 The toolbox works in a specific environment that can be installed through conda using the environment_bas.yml file
 
 ```shell
-conda env create -f environment_bas.yml
+conda env create -f environment_bas_py38.yml
 ```
 
 ## Features
