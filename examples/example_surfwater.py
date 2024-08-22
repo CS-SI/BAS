@@ -25,7 +25,10 @@
 # - A first uncertainty model for node-scale width
 
 import os
-os.environ['USE_PYGEOS'] = '0'
+# os.environ['USE_PYGEOS'] = '0'
+import sys
+
+sys.path.append("/home/cemery/Work/git/BAS/bas")
 
 from argparse import ArgumentParser
 from datetime import datetime
@@ -34,28 +37,37 @@ import logging
 import numpy as np
 import pandas as pd
 import rasterio as rio
-import sys
 
-from bas.rivergeomproduct import RiverGeomProduct
-from bas.basprocessor import BASProcessor
-from bas.watermask import WaterMask
-from bas.tools import FileExtensionError
-from bas.widths import compute_widths_from_single_watermask
+from rivergeomproduct import RiverGeomProduct
+from basprocessor import BASProcessor
+from watermask import WaterMask
+from tools import FileExtensionError
+
+from widths import compute_widths_from_single_watermask
 
 # Config BAS
-DCT_CONFIG_O = {
-    "clean": {"bool_clean": True,
-              "type_clean": "base",  # "base"/"waterbodies"
-              "fpath_wrkdir": ".",
-              "gdf_waterbodies": None
-              },
-    "label": {"bool_label": True,
-              "type_label": "base",  # "base"
-              "fpath_wrkdir": "."
-              },
-    "widths": {"scenario": 11
-               }
-}
+DCT_CONFIG_O = {"clean": {"bool_clean": True,
+                          "type_clean": "base",
+                          "fpath_wrkdir": ".",
+                          "gdf_waterbodies": None
+                          },
+                "label": {"bool_label": True,
+                          "type_label": "base",
+                          "fpath_wrkdir": "."
+                          },
+                "reduce": {"how": "hydrogeom",
+                           "attr_nb_chan_max": "n_chan_max",
+                           "attr_locxs": "loc_xs",
+                           "attr_nodepx": "x_proj",
+                           "attr_nodepy": "y_proj",
+                           "attr_tolerance_dist": "tol_dist",
+                           "attr_meander_length": "meandr_len",
+                           "attr_sinuosity": "sinuosity",
+                           "flt_tol_len": 0.05,
+                           "flt_tol_dist": "tol_dist"},
+                "widths": {"scenario": 11
+                           }
+                }
 
 
 def compute_nodescale_width(gdf_widths_ortho=None, gdf_widths_chck=None):
@@ -129,7 +141,7 @@ def compute_nodescale_widtherror(gdf_widths, flt_watermask_resol):
     return ser_errtot, ser_sigo, ser_sigr, ser_sigs
 
 
-class WaterMaskCE(WaterMask):
+class WaterMaskCHM(WaterMask):
 
     def __init__(self):
 
@@ -146,6 +158,12 @@ class WaterMaskCE(WaterMask):
             Full path to surfwater mask stored in a GeoTiff file
         """
 
+        # Instanciate object
+        klass = WaterMaskCHM()
+        klass.str_provider = "SurfWater"
+        klass.str_fpath_infile = surfwater_tif
+
+        # Set watermask rasterfile
         if not os.path.isfile(surfwater_tif):
             LOGGER.error("Watermask.from_surfwater: Input tif file does not exist..")
             raise FileExistsError("Input tif file does not exist..")
@@ -154,24 +172,34 @@ class WaterMaskCE(WaterMask):
             if not surfwater_tif.endswith(".tif"):
                 raise FileExtensionError
 
-        klass = WaterMaskCE()
-        klass.origin = "SurfWater"
-        klass.rasterfile = surfwater_tif
+        # Set raster coordinate system
         klass.coordsyst = "proj"
 
         with rio.open(surfwater_tif, 'r') as src:
+
             klass.crs = src.crs
             klass.crs_epsg = src.crs.to_epsg()
-            klass.res = src.transform.a
             klass.bbox = (src.bounds.left,
                           src.bounds.bottom,
                           src.bounds.right,
                           src.bounds.top)
 
+            klass.transform = src.transform
+            klass.res = src.transform.a
+            klass.width = src.width
+            klass.height = src.height
+            klass.nodata = src.nodata
+
+            klass.dtypes = src.dtypes[0]
+            klass.dtype_label_out = src.dtypes[0]
+
+            band = src.read(1)
+            _ = klass.band_to_pixc(band, src, exclude_values=0)
+
         return klass
 
 
-class BASProcessorCE(BASProcessor):
+class BASProcessorCHM(BASProcessor):
 
     def __init__(self,
                  str_watermask_tif=None,
@@ -191,7 +219,7 @@ class BASProcessorCE(BASProcessor):
                          str_provider,
                          str_datetime)
 
-    def preprocessing(self):
+    def preprocessing(self, bool_load_wm=True, crs_proj_wm=None):
         """Preprocessing: load watermask, reproject sections et check bounding boxes intersections
             """
 
@@ -199,22 +227,34 @@ class BASProcessorCE(BASProcessor):
         print("")
 
         # Load WaterMask object
-        if self.provider == "SW":  # Watermask is provided by Surfwater
-            LOGGER.info("Load watermask from Surfwater")
-            self.watermask = WaterMaskCE.from_surfwater(self.f_watermask_in)
+        if bool_load_wm:
+            if self.provider == "SW":  # Watermask is provided by Surfwater
+                LOGGER.info("Load watermask from Surfwater")
+                self.watermask = WaterMaskCHM.from_surfwater(self.f_watermask_in)
+
+                # Check boundingbox compatibility
+                self.check_bbox_compatibility()
+            else:
+                LOGGER.error(f"Provider {self.provider} not recognized")
+                raise NotImplementedError
+            LOGGER.info("Watermask loaded..")
         else:
-            LOGGER.error(f"Provider {self.provider} not recognized")
-            raise NotImplementedError
-        LOGGER.info("Watermask loaded..")
+            self.watermask = WaterMaskCHM()
+            LOGGER.info("User chose not to load watermask..")
 
         # Reproject sections to watermask coordinate system
         LOGGER.info("Reproject sections to watermask coordinate system")
-        self.gdf_reaches = self.gdf_reaches.to_crs(self.watermask.crs_epsg)
-        self.gdf_sections = self.gdf_sections.to_crs(self.watermask.crs_epsg)
+        try:
+            self.gdf_reaches = self.gdf_reaches.to_crs(self.watermask.crs_epsg)
+            self.gdf_sections = self.gdf_sections.to_crs(self.watermask.crs_epsg)
+        except:
+            if crs_proj_wm is not None:
+                self.gdf_reaches = self.gdf_reaches.to_crs(crs_proj_wm)
+                self.gdf_sections = self.gdf_sections.to_crs(crs_proj_wm)
+            else:
+                raise ValueError(
+                    "Missing required 'crs_proj_wm' input to reproject reaches/sections without loading wm beforehand.")
         LOGGER.info("Reproject sections to watermask coordinate system done ..")
-
-        # Check boundingbox compatibility
-        self.check_bbox_compatibility()
 
         print("")
         print("----- Preprocessing : Done -----")
@@ -267,6 +307,7 @@ class WidthProcessor:
                 LOGGER.error("Input nodes shapefile does not exist")
                 raise FileExistsError("Input nodes shapefile does not exist")
             self.nodes_shp = str_nodes_shp
+            self.gdf_nodes = gpd.read_file(self.nodes_shp)
         else:
             LOGGER.error("Input nodes shapefile does not exist")
             raise FileExistsError("Input nodes shapefile does not exist")
@@ -312,7 +353,6 @@ class WidthProcessor:
             LOGGER.error("Set centerlines for section definition KO ..")
             raise Exception
 
-
         # Traditionnal orthogonal sections
         LOGGER.info("Traditionnal orthogonal sections ..")
         try:
@@ -336,7 +376,7 @@ class WidthProcessor:
         # Instanciate BASProcessorCalVal objects
         try:
             LOGGER.info("Instanciate BASProcessor object for sections_ortho")
-            self.bas_processor_o = BASProcessorCE(
+            self.bas_processor_o = BASProcessorCHM(
                 str_watermask_tif=self.f_watermask_in,
                 gdf_sections=self.gdf_sections_ortho,
                 gdf_reaches=self.gdf_reaches,
@@ -352,7 +392,7 @@ class WidthProcessor:
 
         try:
             LOGGER.info("Instanciate BASProcessor object for sections_chck")
-            self.bas_processor_c = BASProcessorCE(
+            self.bas_processor_c = BASProcessorCHM(
                 str_watermask_tif=self.f_watermask_in,
                 gdf_sections=self.gdf_sections_chck,
                 gdf_reaches=self.gdf_reaches,
@@ -360,18 +400,26 @@ class WidthProcessor:
                 str_proj="proj",
                 str_provider="SW"
             )
-            self.bas_processor_c.preprocessing()
+            self.bas_processor_c.preprocessing(bool_load_wm=False,
+                                               crs_proj_wm=self.bas_processor_o.watermask.crs_epsg)  # To avoid loading watermask twice
         except Exception as err:
             LOGGER.error(err)
             LOGGER.error("Instanciate width processor check KO ..")
             raise Exception
 
-    def processing(self,
-                   out_dir=".",
-                   str_pekel_shp=None,
-                   str_type_clean=None,
-                   str_type_label=None):
-        """ Produce riverwidth derived from watermask
+    def basprocessing_ortho(self,
+                            out_dir=".",
+                            str_pekel_shp=None,
+                            str_type_clean=None,
+                            str_type_label=None
+                            ):
+        """Perform BASProcessor processing (=clean+label) - only on BASProcessor associated to ortho section
+
+        :param out_dir:
+        :param str_pekel_shp:
+        :param str_type_clean:
+        :param str_type_label:
+        :return:
         """
 
         LOGGER.info("Processing based on orthogonal sections")
@@ -400,61 +448,176 @@ class WidthProcessor:
             dct_cfg_o["clean"]["fpath_wrkdir"] = out_dir
             dct_cfg_o["label"]["fpath_wrkdir"] = out_dir
 
-            gdf_widths_ortho = self.bas_processor_o.processing(dct_cfg_o)
+            self.bas_processor_o.processing(dct_cfg_o)
+
+        except Exception as err:
+            LOGGER.error(err)
+            LOGGER.error("Processing (clean+label) based on orthogonal section KO ..")
+            raise Exception
+
+    def basproccessing_ortho_widths(self, out_dir="."):
+
+        LOGGER.info("Width computation based on orthogonal sections")
+        try:
+            dct_cfg_o = DCT_CONFIG_O
+
+            gser_proj_nodes = self.gdf_nodes["geometry"].to_crs(self.bas_processor_o.watermask.crs)
+
+            # Add required attributes for sections reduction
+            attr_nodepx = dct_cfg_o["reduce"]["attr_nodepx"]
+            self.bas_processor_o.gdf_sections.insert(loc=3,
+                                                     column=attr_nodepx,
+                                                     value=0.)
+            self.bas_processor_o.gdf_sections[attr_nodepx] = gser_proj_nodes.loc[
+                self.bas_processor_o.gdf_sections.index].x
+
+            attr_nodepy = dct_cfg_o["reduce"]["attr_nodepy"]
+            self.bas_processor_o.gdf_sections.insert(loc=4,
+                                                     column=attr_nodepy,
+                                                     value=0.)
+            self.bas_processor_o.gdf_sections[attr_nodepy] = gser_proj_nodes.loc[
+                self.bas_processor_o.gdf_sections.index].y
+
+            attr_n_chan_max = dct_cfg_o["reduce"]["attr_nb_chan_max"]
+            self.bas_processor_o.gdf_sections.insert(loc=5,
+                                                     column=attr_n_chan_max,
+                                                     value=0)
+            self.bas_processor_o.gdf_sections[attr_n_chan_max] = self.gdf_nodes.loc[
+                self.bas_processor_o.gdf_sections.index, attr_n_chan_max]
+
+            attr_tolerance_dist = dct_cfg_o["reduce"]["attr_tolerance_dist"]
+            attr_meandr_len = dct_cfg_o["reduce"]["attr_meander_length"]
+            attr_sinuosity = dct_cfg_o["reduce"]["attr_sinuosity"]
+            self.bas_processor_o.gdf_sections.insert(loc=6,
+                                                     column=attr_tolerance_dist,
+                                                     value=0)
+            self.bas_processor_o.gdf_sections[attr_tolerance_dist] = (
+                    0.5 * self.gdf_nodes.loc[self.gdf_nodes.index, attr_meandr_len] /
+                    self.gdf_nodes.loc[self.gdf_nodes.index, attr_sinuosity])
+
+            gdf_widths_ortho, str_fpath_wm_out = self.bas_processor_o.postprocessing(dct_cfg=dct_cfg_o,
+                                                                      str_fpath_dir_out=out_dir)
+
+            return gdf_widths_ortho, str_fpath_wm_out
+
         except Exception as err:
             LOGGER.error(err)
             LOGGER.error("Processing based on orthogonal section KO ..")
-            raise Exception
+        raise Exception
 
-        LOGGER.info("Processing based on paralell sections")
+    def basprocessing_chck(self):
+
+        LOGGER.info("Processing based on paralell sections: preparation")
         try:
-            dct_cfg_c = {"clean": {"bool_clean": False},
-                         "label": {"bool_label": False},
-                         "widths": {"scenario": 0
-                                    }
-                         }
-            self.bas_processor_c.f_watermask_in = self.bas_processor_o.watermask.rasterfile
-            self.bas_processor_c.watermask.rasterfile = self.bas_processor_o.watermask.rasterfile
-            self.bas_processor_c.watermask.bool_labelled = True
 
-            gdf_widths_chck = self.bas_processor_c.processing(dct_cfg_c)
+            self.bas_processor_c.watermask.gdf_wm_as_pixc = self.bas_processor_o.watermask.gdf_wm_as_pixc
+
         except Exception as err:
             LOGGER.error(err)
-            LOGGER.error("Processing based on parallel section KO ..")
+            LOGGER.error("Processing based on parallel section : preparation KO ..")
             raise Exception
 
-        # Compute node-scale widths
-        LOGGER.info("Compute widths at node scale")
+    def basprocessing_chck_widths(self, str_fpath_wm_in=None):
+
+        LOGGER.info("Width computation based on check sections")
         try:
-            self.gdf_nodescale_widths = compute_nodescale_width(gdf_widths_ortho,
-                                                                gdf_widths_chck)
+            dct_cfg_c = DCT_CONFIG_O
+            dct_cfg_c["widths"]["scenario"] = 0
 
-            self.gdf_nodescale_widths.insert(loc=2, column="provider", value="SW")
-            self.gdf_nodescale_widths.insert(loc=3, column="bool_ko", value=0)
-            self.gdf_nodescale_widths["bool_ko"] = self.gdf_nodescale_widths["width"].apply(
-                lambda w: np.logical_or(np.isnan(w), w == 0))
+            gser_proj_nodes = self.gdf_nodes["geometry"].to_crs(self.bas_processor_o.watermask.crs_epsg)
 
-            LOGGER.info("Node-scale widths computed..")
+            # Add required attributes for sections reduction
+            attr_nodepx = dct_cfg_c["reduce"]["attr_nodepx"]
+            self.bas_processor_c.gdf_sections.insert(loc=3,
+                                                     column=attr_nodepx,
+                                                     value=0.)
+            self.bas_processor_c.gdf_sections[attr_nodepx] = gser_proj_nodes.loc[
+                self.bas_processor_c.gdf_sections.index].x
+
+            attr_nodepy = dct_cfg_c["reduce"]["attr_nodepy"]
+            self.bas_processor_c.gdf_sections.insert(loc=4,
+                                                     column=attr_nodepy,
+                                                     value=0.)
+            self.bas_processor_c.gdf_sections[attr_nodepy] = gser_proj_nodes.loc[
+                self.bas_processor_c.gdf_sections.index].y
+
+            attr_n_chan_max = dct_cfg_c["reduce"]["attr_nb_chan_max"]
+            self.bas_processor_c.gdf_sections.insert(loc=5,
+                                                     column=attr_n_chan_max,
+                                                     value=0)
+            self.bas_processor_c.gdf_sections[attr_n_chan_max] = self.gdf_nodes.loc[
+                self.bas_processor_c.gdf_sections.index, attr_n_chan_max]
+
+            attr_tolerance_dist = dct_cfg_c["reduce"]["attr_tolerance_dist"]
+            attr_meandr_len = dct_cfg_c["reduce"]["attr_meander_length"]
+            attr_sinuosity = dct_cfg_c["reduce"]["attr_sinuosity"]
+            self.bas_processor_c.gdf_sections.insert(loc=6,
+                                                     column=attr_tolerance_dist,
+                                                     value=0)
+            self.bas_processor_c.gdf_sections[attr_tolerance_dist] = (
+                    0.5 * self.gdf_nodes.loc[self.gdf_nodes.index, attr_meandr_len] /
+                    self.gdf_nodes.loc[self.gdf_nodes.index, attr_sinuosity])
+
+            gdf_widths_chck, _ = self.bas_processor_c.postprocessing(dct_cfg=dct_cfg_c,
+                                                                     str_fpath_wm_in=str_fpath_wm_in)
+
+            return gdf_widths_chck
+
         except Exception as err:
             LOGGER.error(err)
-            LOGGER.info("Node-scale widths computed ko..")
-            raise Exception
+            LOGGER.error("Processing based on check section KO ..")
+        raise Exception
 
-        # Compute node-scale width errors
-        LOGGER.info("Compute width error at node scale")
-        try:
-            ser_errtot, ser_sigo, ser_sigr, ser_sigs = compute_nodescale_widtherror(self.gdf_nodescale_widths,
-                                                                                    self.bas_processor_o.watermask.res)
-            self.gdf_nodescale_widths.insert(loc=3, column="width_u", value=ser_errtot)
-            self.gdf_nodescale_widths.insert(loc=4, column="sigo", value=ser_sigo)
-            self.gdf_nodescale_widths.insert(loc=5, column="sigr", value=ser_sigr)
-            self.gdf_nodescale_widths.insert(loc=6, column="sigs", value=ser_sigs)
+    def processing(self,
+                   out_dir=".",
+                   str_pekel_shp=None,
+                   str_type_clean=None,
+                   str_type_label=None):
+        """ Produce riverwidth derived from watermask
+        """
 
-            LOGGER.info("Node-scale width errors computed..")
-        except Exception as err:
-            LOGGER.error(err)
-            LOGGER.info("Node-scale width errors computed ko..")
-            raise Exception
+        self.basprocessing_ortho(out_dir=out_dir,
+                                 str_pekel_shp=str_pekel_shp,
+                                 str_type_clean=str_type_clean,
+                                 str_type_label=str_type_label)
+        gdf_widths_ortho, str_fpath_wm_out = self.basproccessing_ortho_widths(out_dir=out_dir)
+
+        self.basprocessing_chck()
+        gdf_widths_chck, _ = self.basprocessing_chck_widths(str_fpath_wm_in=str_fpath_wm_out)
+        print(gdf_widths_chck)
+
+        # # Compute node-scale widths
+        # LOGGER.info("Compute widths at node scale")
+        # try:
+        #     self.gdf_nodescale_widths = compute_nodescale_width(gdf_widths_ortho,
+        #                                                         gdf_widths_chck)
+        #
+        #     self.gdf_nodescale_widths.insert(loc=2, column="provider", value="SW")
+        #     self.gdf_nodescale_widths.insert(loc=3, column="bool_ko", value=0)
+        #     self.gdf_nodescale_widths["bool_ko"] = self.gdf_nodescale_widths["width"].apply(
+        #         lambda w: np.logical_or(np.isnan(w), w == 0))
+        #
+        #     LOGGER.info("Node-scale widths computed..")
+        # except Exception as err:
+        #     LOGGER.error(err)
+        #     LOGGER.info("Node-scale widths computed ko..")
+        #     raise Exception
+        #
+        # # Compute node-scale width errors
+        # LOGGER.info("Compute width error at node scale")
+        # try:
+        #     ser_errtot, ser_sigo, ser_sigr, ser_sigs = compute_nodescale_widtherror(self.gdf_nodescale_widths,
+        #                                                                             self.bas_processor_o.watermask.res)
+        #     self.gdf_nodescale_widths.insert(loc=3, column="width_u", value=ser_errtot)
+        #     self.gdf_nodescale_widths.insert(loc=4, column="sigo", value=ser_sigo)
+        #     self.gdf_nodescale_widths.insert(loc=5, column="sigr", value=ser_sigr)
+        #     self.gdf_nodescale_widths.insert(loc=6, column="sigs", value=ser_sigs)
+        #
+        #     LOGGER.info("Node-scale width errors computed..")
+        # except Exception as err:
+        #     LOGGER.error(err)
+        #     LOGGER.info("Node-scale width errors computed ko..")
+        #     raise Exception
 
     def postprocessing(self, output_dir="."):
         """ Save processed riverwidths into files
@@ -521,8 +684,8 @@ def process_single_scene(str_watermask_tif=None,
                                       str_type_clean=str_type_clean,
                                       str_type_label=str_type_label)
 
-        # PostProcessing
-        obj_widthprocessor.postprocessing(str_outputdir)
+        # # PostProcessing
+        # obj_widthprocessor.postprocessing(str_outputdir)
 
 
 
