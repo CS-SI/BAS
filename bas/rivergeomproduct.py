@@ -23,7 +23,7 @@
 module rivergeomproduct.py
 : Contains classes to manipulate river-related 1D-geometries
 """
-import os
+
 import geopandas as gpd
 import numpy as np
 import os
@@ -34,7 +34,7 @@ from sw1dto2d.sw1dto2d import SW1Dto2D
 from tools import FileExtensionError
 from tools import project
 
-os.environ['USE_PYGEOS'] = '0'
+# os.environ['USE_PYGEOS'] = '0'
 
 
 def get_linedge_pointwise_norm(npar_xycoord):
@@ -298,8 +298,8 @@ class RiverGeomProduct:
                  zip(arr_centerline_x, arr_centerline_y)])
 
         # Get nodes information
-        klass.npar_int_nodegrp_nodeid = gdf_nodes[dct_attr["nodes"]["nodes_id"]].to_numpy()
-        klass.npar_int_nodegrp_reachid = gdf_nodes[dct_attr["nodes"]["reaches_id"]].to_numpy()
+        klass.npar_int_nodegrp_nodeid = gdf_nodes[dct_attr["nodes"]["nodes_id"]].to_numpy().astype(int)
+        klass.npar_int_nodegrp_reachid = gdf_nodes[dct_attr["nodes"]["reaches_id"]].to_numpy().astype(int)
 
         klass.npar_flt_nodegrp_plon = gdf_nodes["geometry"].x.to_numpy()
         klass.npar_flt_nodegrp_plat = gdf_nodes["geometry"].y.to_numpy()
