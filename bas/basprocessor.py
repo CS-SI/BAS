@@ -37,36 +37,11 @@ import numpy as np
 from tools import DisjointBboxError, FileExtensionError
 from watermask import WaterMask
 from widths import compute_widths_from_single_watermask
+from sections_reduction import reduce_section
+from constants import FLT_TOL_LEN_DEFAULT, FLT_TOL_DIST_DEFAULT
 
 
 # os.environ['USE_PYGEOS'] = '0'
-
-def reduce_section(lin_long_in, pol_in):
-    """Reduce linestring to the shortest linestring with the control polygon
-
-    Parameters
-    ----------
-    lin_long_in : LineString
-    pol_in : Polygon
-
-    Returns
-    -------
-    lin_out : LineString
-
-    """
-
-    lin_cut = pol_in.intersection(lin_long_in)
-    if isinstance(lin_cut, MultiLineString):
-        l_xy = []
-        for geom in lin_cut.geoms:
-            l_xy += list(geom.coords)
-        lin_out = LineString(l_xy)
-    elif isinstance(lin_cut, LineString):
-        lin_out = lin_cut
-    else:
-        raise NotImplementedError
-
-    return lin_out
 
 
 class BASProcessor:
@@ -131,6 +106,13 @@ class BASProcessor:
                                   "type_label": "base",
                                   "fpath_wrkdir": "."
                                   },
+                        "reduce": {
+                            "how": "simple",
+                            "attr_locxs": "loc_xs",
+                            "attr_nb_chan_max": "n_chan_max",
+                            "attr_nodepx": "proj_x",
+                            "attr_nodepy": "proj_y"
+                        },
                         "widths": {"scenario": 0
                                    }
                         }
@@ -328,7 +310,100 @@ class BASProcessor:
         }
         self.watermask.update_label_flag(dct_label_update)
 
-    def reduce_sections(self, dct_cfg=None):
+    def _prepare_tol_inputs(self, str_input_name=None, obj_to_prepare=None, default_value=0.):
+        """
+
+        :param str_input_name: str
+            key pointing towards the parameter to prepare
+        :param obj_to_prepare: dict
+            dict with configuration parameter
+        :param default_value:
+            default value of parameter, if key str_input_name is not in obj_to_prepare dictionnary
+        :return:
+        """
+
+        if str_input_name is None:
+            raise ValueError("Missing input argument 'str_input_name' for method '_prepare_tol_inputs'")
+        if obj_to_prepare is None:
+            raise ValueError("Missing input argument 'obj_to_prepare' for method '_prepare_tol_inputs'")
+
+        try:
+
+            if isinstance(obj_to_prepare[str_input_name], float):  # Unique value
+                self.gdf_sections.insert(loc=2, column=str_input_name, value=obj_to_prepare[str_input_name])
+
+            # To debug
+            elif isinstance(obj_to_prepare[str_input_name], str):  # Column name in self.gdf_sections (from inputs)
+
+                self.gdf_sections.rename(columns={obj_to_prepare[str_input_name]: str_input_name}, inplace=True)
+
+            else:
+                raise TypeError("Unexpected type of config input', "
+                                "got {}, expecting (int, str)".format(obj_to_prepare[str_input_name].__class__))
+
+        except KeyError:  # entry is not defined
+            self.gdf_sections.insert(loc=2, column=str_input_name, value=default_value)
+
+    def _reduce_sections_over_reach(self, reach_id=None,
+                                    lin_reach=None,
+                                    pol_region=None,
+                                    dct_cfg=None):
+        """Reduce all sections over a single reach
+
+        :param reach_id: (str,int)
+            ID of current reach
+        :param lin_reach: LineString
+            geometry of the centerline/reach
+        :param pol_region: (Polygon/MultiPolygon)
+            geometry of the vectorized watermask associated to the current reach
+        :param dct_cfg: dict
+            configuration dictionnary
+        :return: GeoDataFrame
+            gdfsub_sections_byreach_onregion
+        """
+
+        gdfsub_sections_byreach = self.gdf_sections[self.gdf_sections[self.attr_reachid] == reach_id].copy(
+            deep=True)
+
+        # In sections subset, keep only sections that intersect current region
+        ser_bool_intersects = gdfsub_sections_byreach["geometry"].intersects(pol_region)
+        gdfsub_sections_byreach_onregion = gdfsub_sections_byreach[ser_bool_intersects].copy(deep=True)
+
+        # For remaining stations/sections, reduce their geometry to within the current region
+        if len(gdfsub_sections_byreach_onregion) > 0:
+
+            try:
+                gdfsub_sections_byreach_onregion["geometry"] = gdfsub_sections_byreach_onregion.apply(
+                    lambda x: reduce_section(how=dct_cfg["reduce"]["how"],
+                                             lin_long_in=x.geometry,
+                                             pol_in=pol_region,
+                                             lin_rch_in=lin_reach,
+                                             flt_section_xs_along_rch=x[dct_cfg["reduce"]["attr_locxs"]],
+                                             flt_node_proj_x=x[dct_cfg["reduce"]["attr_nodepx"]],
+                                             flt_node_proj_y=x[dct_cfg["reduce"]["attr_nodepy"]],
+                                             int_nb_chan_max=x[dct_cfg["reduce"]["attr_nb_chan_max"]],
+                                             flt_tol_len=x["flt_tol_len"],
+                                             flt_tol_dist=x["flt_tol_dist"]
+                                             ),
+                    axis=1)
+
+            except KeyError:
+
+                if dct_cfg["reduce"]["how"] != "simple":
+                    print("Warning: Missing inputs for reduce_type different from 'simple'.")
+                gdfsub_sections_byreach_onregion["geometry"] = gdfsub_sections_byreach_onregion.apply(
+                    lambda x: reduce_section(how=dct_cfg["reduce"]["how"],
+                                             lin_long_in=x.geometry,
+                                             pol_in=pol_region,
+                                             lin_rch_in=lin_reach),
+                    axis=1)
+
+            gdfsub_sections_byreach_onregion = gdfsub_sections_byreach_onregion[
+                ~gdfsub_sections_byreach_onregion["geometry"].is_empty]
+
+            return gdfsub_sections_byreach_onregion
+
+    def reduce_sections(self, dct_cfg=None, flt_tol_len=FLT_TOL_LEN_DEFAULT, flt_tol_dist=FLT_TOL_DIST_DEFAULT):
         """Reduce sections geometry to its associated region
 
         Parameters
@@ -347,6 +422,20 @@ class BASProcessor:
         if dct_cfg is None:
             dct_cfg = self.dct_cfg
 
+        if "reduce" not in dct_cfg.keys():
+            dct_cfg["reduce"] = self.dct_cfg["reduce"]
+
+        if dct_cfg["reduce"]["how"] != "simple":
+            # Prepare input flt_tol_len
+            self._prepare_tol_inputs(str_input_name="flt_tol_len",
+                                     obj_to_prepare=dct_cfg["reduce"],
+                                     default_value=flt_tol_len)
+
+            # Prepare input flt_tol_dist
+            self._prepare_tol_inputs(str_input_name="flt_tol_dist",
+                                     obj_to_prepare=dct_cfg["reduce"],
+                                     default_value=flt_tol_dist)
+
         gdf_wm_labelled_pol = self.watermask.get_polygons(
             bool_clean=dct_cfg["clean"]["bool_clean"],
             bool_label=dct_cfg["label"]["bool_label"],
@@ -356,22 +445,17 @@ class BASProcessor:
 
         l_gdfsub_sections = []
         for label, group in gdf_wm_labelled_pol.groupby(by="label").groups.items():
-
             pol_region = MultiPolygon(gdf_wm_labelled_pol.loc[group, "geometry"].tolist())
 
             # Extract sections associated to unique current reach
             reach_id = self.gdf_reaches.at[label, self.attr_reachid]
-            gdfsub_sections_byreach = self.gdf_sections[self.gdf_sections[self.attr_reachid] == reach_id].copy(
-                deep=True)
+            lin_reach = self.gdf_reaches.at[label, "geometry"]
 
-            # In sections subset, keep only sections that intersect current region
-            ser_bool_intersects = gdfsub_sections_byreach["geometry"].intersects(pol_region)
-            gdfsub_sections_byreach_onregion = gdfsub_sections_byreach[ser_bool_intersects].copy(deep=True)
+            gdfsub_sections_byreach_onregion = self._reduce_sections_over_reach(reach_id=reach_id,
+                                                                                lin_reach=lin_reach,
+                                                                                pol_region=pol_region,
+                                                                                dct_cfg=dct_cfg)
 
-            # For remaining stations/sections, reduce their geometry to within the current region
-            if len(gdfsub_sections_byreach_onregion) > 0:
-                gdfsub_sections_byreach_onregion["geometry"] = gdfsub_sections_byreach_onregion[
-                    "geometry"].apply(lambda line: reduce_section(line, pol_region))
             l_gdfsub_sections.append(gdfsub_sections_byreach_onregion)
 
         # Gather all sections
@@ -379,7 +463,7 @@ class BASProcessor:
 
         return gdf_sections_out
 
-    def postprocessing(self, dct_cfg=None, str_fpath_dir_out="."):
+    def postprocessing(self, dct_cfg=None, str_fpath_dir_out=".", str_fpath_wm_in=None):
         """
 
         :param dct_cfg:
@@ -392,14 +476,20 @@ class BASProcessor:
 
         # Prepare sections
         gdf_wrk_sections = self.reduce_sections(dct_cfg)
+        # print(gdf_wrk_sections[gdf_wrk_sections["geometry"].isna()])
+        # gdf_wrk_sections = gdf_wrk_sections[gdf_wrk_sections["geometry"].notna()]
+        # print(gdf_wrk_sections[gdf_wrk_sections["geometry"].isna()])
 
         # Process width
         print("---- Compute widths ----")
-        str_fpath_wm_tif = self.watermask.save_wm(fmt="tif",
+        if str_fpath_wm_in is None:
+            str_fpath_wm_tif = self.watermask.save_wm(fmt="tif",
                                                   bool_clean=dct_cfg["clean"]["bool_clean"],
                                                   bool_label=dct_cfg["label"]["bool_label"],
                                                   str_fpath_dir_out=str_fpath_dir_out,
                                                   str_suffix="readytouse")
+        else:
+            str_fpath_wm_tif = str_fpath_wm_in
         with rio.open(str_fpath_wm_tif) as src:
             gdf_widths, _ = compute_widths_from_single_watermask(scenario=dct_cfg["widths"]["scenario"],
                                                                  watermask=src,

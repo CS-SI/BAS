@@ -121,11 +121,11 @@ class WaterMask:
             klass.dtype_label_out = src.dtypes[0]
 
             band = src.read(1)
-            klass.gdf_wm_as_pixc = klass.band_to_pixc(band, src)
+            _ = klass.band_to_pixc(band, src)
 
         return klass
 
-    def band_to_pixc(self, npar_band, raster_src, **kwargs):
+    def band_to_pixc(self, npar_band, raster_src, exclude_values=None, **kwargs):
         """Transform the input raster band into a pixel-cloud like object in a geodataframe for easier manipulation
 
         :param npar_band:
@@ -143,12 +143,19 @@ class WaterMask:
         # Turn watermask band into a point-cloud format
         band_flat = npar_band.flatten()
         indices = np.where(band_flat != raster_src.nodata)[0]
+        if exclude_values is not None:
+            if isinstance(exclude_values, (int, float)):
+                indices_excluded = np.where(band_flat == exclude_values)[0]
+                indices = np.setdiff1d(indices, indices_excluded)
+            else:
+                raise NotImplementedError("For now, can only exclude single value. If more, need to be implemented")
+
         l_index = [t for t in np.unravel_index(indices, npar_band.shape)]
         l_coords = [raster_src.xy(i, j) for i, j in
                     zip(np.unravel_index(indices, npar_band.shape)[0], np.unravel_index(indices, npar_band.shape)[1])]
 
         # Store watermask labels
-        gdf_band_to_pixc = gpd.GeoDataFrame(
+        self.gdf_wm_as_pixc = gpd.GeoDataFrame(
             pd.DataFrame({"i": [i for i in l_index[0]],
                           "j": [j for j in l_index[1]],
                           "label": [band_flat[k] for k in indices],
@@ -162,9 +169,8 @@ class WaterMask:
             ),
             crs=raster_src.crs
         )
-        self.gdf_wm_as_pixc = gdf_band_to_pixc
 
-        return gdf_band_to_pixc
+        return self.gdf_wm_as_pixc
 
     def __str__(self):
         """ str method
