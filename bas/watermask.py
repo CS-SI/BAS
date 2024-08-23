@@ -43,9 +43,6 @@ from tools import FileExtensionError, DimensionError
 # os.environ['USE_PYGEOS'] = '0'
 
 
-
-
-
 class WaterMask:
 
     def __init__(self):
@@ -128,8 +125,12 @@ class WaterMask:
     def band_to_pixc(self, npar_band, raster_src, exclude_values=None, **kwargs):
         """Transform the input raster band into a pixel-cloud like object in a geodataframe for easier manipulation
 
-        :param npar_band:
-        :param raster_src:
+        :param npar_band: np.array
+            watermask data
+        :param raster_src: rasterio.io.Dataset
+            watermask as raster
+        :param exclude_values: (int, float)
+            value in watermask to consider as nodata (to ignore)
         :param kwargs:
         :return:
         """
@@ -240,8 +241,8 @@ class WaterMask:
     def get_band(self, bool_clean=True, bool_label=True, as_ma=True):
         """ Return wm as band-like format with activated flags
 
-        :param bool_clean:
-        :param bool_label:
+        :param bool_clean: bool
+        :param bool_label: bool
         :return:
         """
 
@@ -305,7 +306,7 @@ class WaterMask:
 
         gdf_wm_as_pol = gpd.GeoDataFrame(
             pd.DataFrame({"label": l_pol_value,
-                          "clean": [1]*len(l_pol_value),
+                          "clean": [1] * len(l_pol_value),
                           "indices": None}),
             geometry=gpd.GeoSeries(
                 l_pol_wm, crs=self.crs
@@ -413,5 +414,3 @@ class WaterMask:
 
         else:
             raise ValueError("Unknown expected output format for the watermask")
-
-
