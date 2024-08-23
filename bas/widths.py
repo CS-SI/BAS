@@ -27,12 +27,11 @@ import os
 import geopandas as gpd
 import numpy as np
 import rasterio as rio
-import shapely
 from rasterio.mask import mask
 from rasterio.features import shapes
 from shapely.geometry import shape, MultiPolygon
 
-os.environ['USE_PYGEOS'] = '0'
+# os.environ['USE_PYGEOS'] = '0'
 
 
 def compute_widths_from_single_watermask(scenario, watermask, sections, buffer_length=25.0, index_attr="index",
