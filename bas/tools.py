@@ -23,11 +23,11 @@
 tools.py
 : module containing diverse python tools to follow execution
 """
-import os
+# import os
 import time
 import pyproj
 
-os.environ['USE_PYGEOS'] = '0'
+# os.environ['USE_PYGEOS'] = '0'
 
 
 class FileExtensionError(TypeError):
@@ -103,7 +103,7 @@ class Timer:
 
         """
 
-        # calulate duration time
+        # calculate duration time
         if (self.tmp_time == 0) or (flag_start == 1):
             current_time = time.time() - self.start_time
         else:
@@ -163,24 +163,17 @@ class RDFParser:
 def project(lon, lat, proj="laea", ellps="WGS84", lon_0=None, lat_0=None, x_0=0.0, y_0=0.0, inverse=False, **proj_kwds):
     """Project/Reproject from WGS84-lon-lat into local "laea"
 
-    Parameters
-    ----------
-    proj : str
-        name of the output (input if inverse is True) projection
-    ellps : str
-        name eof the input (output if inverse is True) ellipsoid
-    lon_0 :
-    lat_0 :
-    x_0 :
-    y_0 :
-    inverse : bool
-        inverse transformation
-    proj_kwds :
-        other arguments for the projection function
-
-    Returns
-    -------
-
+    :param lon:
+    :param lat:
+    :param proj:
+    :param ellps:
+    :param lon_0:
+    :param lat_0:
+    :param x_0:
+    :param y_0:
+    :param inverse:
+    :param proj_kwds:
+    :return:
     """
 
     fct = pyproj.Proj(proj=proj,
