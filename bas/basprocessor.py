@@ -466,6 +466,7 @@ class BASProcessor:
     def postprocessing(self, dct_cfg=None, str_fpath_dir_out=".", str_fpath_wm_in=None):
         """
 
+        :param str_fpath_wm_in:
         :param dct_cfg:
         :param str_fpath_dir_out:
         :return:
@@ -476,9 +477,6 @@ class BASProcessor:
 
         # Prepare sections
         gdf_wrk_sections = self.reduce_sections(dct_cfg)
-        # print(gdf_wrk_sections[gdf_wrk_sections["geometry"].isna()])
-        # gdf_wrk_sections = gdf_wrk_sections[gdf_wrk_sections["geometry"].notna()]
-        # print(gdf_wrk_sections[gdf_wrk_sections["geometry"].isna()])
 
         # Process width
         print("---- Compute widths ----")
@@ -490,6 +488,7 @@ class BASProcessor:
                                                   str_suffix="readytouse")
         else:
             str_fpath_wm_tif = str_fpath_wm_in
+
         with rio.open(str_fpath_wm_tif) as src:
             gdf_widths, _ = compute_widths_from_single_watermask(scenario=dct_cfg["widths"]["scenario"],
                                                                  watermask=src,
