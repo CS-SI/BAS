@@ -20,7 +20,6 @@
 # limitations under the License.
 
 import sys
-
 sys.path.append("/home/cemery/Work/git/BAS/bas")
 
 import geopandas as gpd
@@ -387,6 +386,7 @@ def example_7():
     """Example_7 :
         Watermask cleaning with reference waterbodies + watermask labelling
         Sections NOT available
+        Reduce : base
         2 width products over the same mask
     """
 
@@ -409,10 +409,10 @@ def example_7():
     obj_rivergeom.draw_allreaches_centerline()
 
     gdf_sections_ortho = obj_rivergeom.draw_allreaches_sections(type="ortho", flt_factor_width=15.)
-    gdf_sections_ortho.to_file("/home/cemery/Work/git/BAS/examples/ex6_sections_ortho.shp")
+    gdf_sections_ortho.to_file("ex6_sections_ortho.shp")
 
     gdf_sections_chck = obj_rivergeom.draw_allreaches_sections(type="chck")
-    gdf_sections_chck.to_file("/home/cemery/Work/git/BAS/examples/ex6_sections_chck.shp")
+    gdf_sections_chck.to_file("ex6_sections_chck.shp")
 
     # Set configs #6
     dct_cfg_V7a = {"clean": {"bool_clean": True,
@@ -514,18 +514,21 @@ def example_8():
     # Set configs #5
     dct_cfg_V8 = {"clean": {"bool_clean": True,
                             "type_clean": "waterbodies",
-                            "fpath_wrkdir": "/home/cemery/Work/git/BAS/examples",
+                            "fpath_wrkdir": ".",
                             "gdf_waterbodies": gdf_waterbodies
                             },
                   "label": {"bool_label": True,
                             "type_label": "base",
-                            "fpath_wrkdir": "/home/cemery/Work/git/BAS/examples"
+                            "fpath_wrkdir": "."
                             },
                   "reduce": {"how": "hydrogeom",
                              "attr_nb_chan_max": "n_chan_max",
                              "attr_locxs": "loc_xs",
                              "attr_nodepx": "x_proj",
                              "attr_nodepy": "y_proj",
+                             "attr_tolerance_dist": "tol_dist",
+                             "attr_meander_length": "meand_len",
+                             "attr_sinuosity": "sinuosity",
                              "flt_tol_len": 0.05,
                              "flt_tol_dist": "tol_dist"},
                   "widths": {"scenario": 11
@@ -533,11 +536,16 @@ def example_8():
                   }
 
     # Add specific attributes
-    gdf_sections_ortho.insert(loc=2, column=dct_cfg_V8["reduce"]["attr_nb_chan_max"], value=0)
-    gdf_sections_ortho[dct_cfg_V8["reduce"]["attr_nb_chan_max"]] = gdf_nodes_cplx.loc[
-        gdf_sections_ortho.index, dct_cfg_V8["reduce"]["attr_nb_chan_max"]]
-    gdf_sections_ortho["tol_dist"] = (0.5 * gdf_nodes_cplx.loc[gdf_sections_ortho.index, "meander_le"] /
-                                      gdf_nodes_cplx.loc[gdf_sections_ortho.index, "sinuosity"])
+    attr_nb_chan_max = dct_cfg_V8["reduce"]["attr_nb_chan_max"]
+    gdf_sections_ortho.insert(loc=2, column=attr_nb_chan_max, value=0)
+    gdf_sections_ortho[attr_nb_chan_max] = gdf_nodes_cplx.loc[gdf_sections_ortho.index, attr_nb_chan_max]
+
+    attr_meander_length = dct_cfg_V8["reduce"]["attr_meander_length"]
+    attr_sinuosity = dct_cfg_V8["reduce"]["attr_sinuosity"]
+    attr_tol_dist = dct_cfg_V8["reduce"]["flt_tol_dist"]
+    gdf_sections_ortho.insert(loc=3, column=attr_tol_dist, value=0.)
+    gdf_sections_ortho[attr_tol_dist] = (0.5 * gdf_nodes_cplx.loc[gdf_sections_ortho.index, attr_meander_length] /
+                                      gdf_nodes_cplx.loc[gdf_sections_ortho.index, attr_sinuosity])
 
     # Instanciate basprocessor(s)
     processor_a = BASProcessor(
@@ -581,17 +589,17 @@ if __name__ == "__main__":
     gdf_sections = gpd.read_file(shp_sections_smpl)
     gdf_sections.rename(mapper={"segment": "id"}, inplace=True, axis=1)
 
-    # Run example 1
-    example_1()
-
-    # Run example 2
-    example_2()
-
-    # Run example 3
-    example_3()
-
-    # Run example 4
-    example_4()
+    # # Run example 1
+    # example_1()
+    #
+    # # Run example 2
+    # example_2()
+    #
+    # # Run example 3
+    # example_3()
+    #
+    # # Run example 4
+    # example_4()
 
     # # Run example 5
     example_5()
