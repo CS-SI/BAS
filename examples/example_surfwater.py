@@ -27,7 +27,6 @@
 import os
 # os.environ['USE_PYGEOS'] = '0'
 import sys
-
 sys.path.append("/home/cemery/Work/git/BAS/bas")
 
 from argparse import ArgumentParser
@@ -43,7 +42,7 @@ from basprocessor import BASProcessor
 from watermask import WaterMask
 from tools import FileExtensionError
 
-from widths import compute_widths_from_single_watermask
+# from widths import compute_widths_from_single_watermask
 
 # Config BAS
 DCT_CONFIG_O = {"clean": {"bool_clean": True,
@@ -61,7 +60,7 @@ DCT_CONFIG_O = {"clean": {"bool_clean": True,
                            "attr_nodepx": "x_proj",
                            "attr_nodepy": "y_proj",
                            "attr_tolerance_dist": "tol_dist",
-                           "attr_meander_length": "meandr_len",
+                           "attr_meander_length": "meand_len",
                            "attr_sinuosity": "sinuosity",
                            "flt_tol_len": 0.05,
                            "flt_tol_dist": "tol_dist"},
@@ -496,7 +495,7 @@ class WidthProcessor:
                     self.gdf_nodes.loc[self.gdf_nodes.index, attr_sinuosity])
 
             gdf_widths_ortho, str_fpath_wm_out = self.bas_processor_o.postprocessing(dct_cfg=dct_cfg_o,
-                                                                      str_fpath_dir_out=out_dir)
+                                                                                     str_fpath_dir_out=out_dir)
 
             return gdf_widths_ortho, str_fpath_wm_out
 
@@ -510,7 +509,7 @@ class WidthProcessor:
         LOGGER.info("Processing based on paralell sections: preparation")
         try:
 
-            self.bas_processor_c.watermask.gdf_wm_as_pixc = self.bas_processor_o.watermask.gdf_wm_as_pixc
+            self.bas_processor_c.watermask = self.bas_processor_o.watermask
 
         except Exception as err:
             LOGGER.error(err)
@@ -583,41 +582,41 @@ class WidthProcessor:
         gdf_widths_ortho, str_fpath_wm_out = self.basproccessing_ortho_widths(out_dir=out_dir)
 
         self.basprocessing_chck()
-        gdf_widths_chck, _ = self.basprocessing_chck_widths(str_fpath_wm_in=str_fpath_wm_out)
+        gdf_widths_chck = self.basprocessing_chck_widths(str_fpath_wm_in=str_fpath_wm_out)
         print(gdf_widths_chck)
 
-        # # Compute node-scale widths
-        # LOGGER.info("Compute widths at node scale")
-        # try:
-        #     self.gdf_nodescale_widths = compute_nodescale_width(gdf_widths_ortho,
-        #                                                         gdf_widths_chck)
-        #
-        #     self.gdf_nodescale_widths.insert(loc=2, column="provider", value="SW")
-        #     self.gdf_nodescale_widths.insert(loc=3, column="bool_ko", value=0)
-        #     self.gdf_nodescale_widths["bool_ko"] = self.gdf_nodescale_widths["width"].apply(
-        #         lambda w: np.logical_or(np.isnan(w), w == 0))
-        #
-        #     LOGGER.info("Node-scale widths computed..")
-        # except Exception as err:
-        #     LOGGER.error(err)
-        #     LOGGER.info("Node-scale widths computed ko..")
-        #     raise Exception
-        #
-        # # Compute node-scale width errors
-        # LOGGER.info("Compute width error at node scale")
-        # try:
-        #     ser_errtot, ser_sigo, ser_sigr, ser_sigs = compute_nodescale_widtherror(self.gdf_nodescale_widths,
-        #                                                                             self.bas_processor_o.watermask.res)
-        #     self.gdf_nodescale_widths.insert(loc=3, column="width_u", value=ser_errtot)
-        #     self.gdf_nodescale_widths.insert(loc=4, column="sigo", value=ser_sigo)
-        #     self.gdf_nodescale_widths.insert(loc=5, column="sigr", value=ser_sigr)
-        #     self.gdf_nodescale_widths.insert(loc=6, column="sigs", value=ser_sigs)
-        #
-        #     LOGGER.info("Node-scale width errors computed..")
-        # except Exception as err:
-        #     LOGGER.error(err)
-        #     LOGGER.info("Node-scale width errors computed ko..")
-        #     raise Exception
+        # Compute node-scale widths
+        LOGGER.info("Compute widths at node scale")
+        try:
+            self.gdf_nodescale_widths = compute_nodescale_width(gdf_widths_ortho,
+                                                                gdf_widths_chck)
+
+            self.gdf_nodescale_widths.insert(loc=2, column="provider", value="SW")
+            self.gdf_nodescale_widths.insert(loc=3, column="bool_ko", value=0)
+            self.gdf_nodescale_widths["bool_ko"] = self.gdf_nodescale_widths["width"].apply(
+                lambda w: np.logical_or(np.isnan(w), w == 0))
+
+            LOGGER.info("Node-scale widths computed..")
+        except Exception as err:
+            LOGGER.error(err)
+            LOGGER.info("Node-scale widths computed ko..")
+            raise Exception
+
+        # Compute node-scale width errors
+        LOGGER.info("Compute width error at node scale")
+        try:
+            ser_errtot, ser_sigo, ser_sigr, ser_sigs = compute_nodescale_widtherror(self.gdf_nodescale_widths,
+                                                                                    self.bas_processor_o.watermask.res)
+            self.gdf_nodescale_widths.insert(loc=3, column="width_u", value=ser_errtot)
+            self.gdf_nodescale_widths.insert(loc=4, column="sigo", value=ser_sigo)
+            self.gdf_nodescale_widths.insert(loc=5, column="sigr", value=ser_sigr)
+            self.gdf_nodescale_widths.insert(loc=6, column="sigs", value=ser_sigs)
+
+            LOGGER.info("Node-scale width errors computed..")
+        except Exception as err:
+            LOGGER.error(err)
+            LOGGER.info("Node-scale width errors computed ko..")
+            raise Exception
 
     def postprocessing(self, output_dir="."):
         """ Save processed riverwidths into files
@@ -685,13 +684,10 @@ def process_single_scene(str_watermask_tif=None,
                                       str_type_label=str_type_label)
 
         # # PostProcessing
-        # obj_widthprocessor.postprocessing(str_outputdir)
+        obj_widthprocessor.postprocessing(str_outputdir)
 
-
-
-
-
-    except:
+    except Exception as err:
+        LOGGER.info(err)
         LOGGER.info("===> Fail during working with WidthProcessor object\n")
         pass
 
