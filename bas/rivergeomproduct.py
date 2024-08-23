@@ -298,8 +298,8 @@ class RiverGeomProduct:
                  zip(arr_centerline_x, arr_centerline_y)])
 
         # Get nodes information
-        klass.npar_int_nodegrp_nodeid = gdf_nodes[dct_attr["nodes"]["nodes_id"]].to_numpy().astype(int)
-        klass.npar_int_nodegrp_reachid = gdf_nodes[dct_attr["nodes"]["reaches_id"]].to_numpy().astype(int)
+        klass.npar_int_nodegrp_nodeid = gdf_nodes[dct_attr["nodes"]["nodes_id"]].to_numpy()
+        klass.npar_int_nodegrp_reachid = gdf_nodes[dct_attr["nodes"]["reaches_id"]].to_numpy()
 
         klass.npar_flt_nodegrp_plon = gdf_nodes["geometry"].x.to_numpy()
         klass.npar_flt_nodegrp_plat = gdf_nodes["geometry"].y.to_numpy()
@@ -359,6 +359,17 @@ class RiverGeomProduct:
             Current study reach ID
 
         """
+
+        # Check input types
+        if isinstance(reachid, str) :
+            if not isinstance(self.npar_int_nodegrp_reachid.dtype, (str,object)):
+                raise TypeError(f"Input reachid of class {reachid.__class__} is different from attribute "
+                                f"npar_int_nodegrp_reachid dtype {self.npar_int_nodegrp_reachid.dtype}")
+
+        else:
+            if reachid.__class__ != self.npar_int_nodegrp_reachid.dtype:
+                raise TypeError(f"Input reachid of class {reachid.__class__} is different from attribute "
+                            f"npar_int_nodegrp_reachid dtype {self.npar_int_nodegrp_reachid.dtype}")
 
         self.dct_centerline[reachid] = {}
 
