@@ -24,5 +24,6 @@ constants.py
 : Constants for BASProcessor
 """
 
+FLT_LABEL_MAX_DIST = 3000.
 FLT_TOL_LEN_DEFAULT = 0.05
 FLT_TOL_DIST_DEFAULT = 400.
