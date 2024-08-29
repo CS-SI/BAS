@@ -589,19 +589,19 @@ if __name__ == "__main__":
     gdf_sections = gpd.read_file(shp_sections_smpl)
     gdf_sections.rename(mapper={"segment": "id"}, inplace=True, axis=1)
 
-    # # Run example 1
-    # example_1()
-    #
-    # # Run example 2
-    # example_2()
-    #
-    # # Run example 3
-    # example_3()
-    #
-    # # Run example 4
-    # example_4()
+    # Run example 1
+    example_1()
 
-    # # Run example 5
+    # Run example 2
+    example_2()
+
+    # Run example 3
+    example_3()
+
+    # Run example 4
+    example_4()
+
+    # Run example 5
     example_5()
 
     # Run example 6
