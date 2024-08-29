@@ -38,7 +38,7 @@ from tools import DisjointBboxError, FileExtensionError
 from watermask import WaterMask
 from widths import compute_widths_from_single_watermask
 from sections_reduction import reduce_section
-from constants import FLT_TOL_LEN_DEFAULT, FLT_TOL_DIST_DEFAULT
+from constants import FLT_TOL_LEN_DEFAULT, FLT_TOL_DIST_DEFAULT, FLT_LABEL_MAX_DIST
 
 
 # os.environ['USE_PYGEOS'] = '0'
@@ -302,7 +302,7 @@ class BASProcessor:
         # Associate each pixel from wm to the closest reach
         gdf_label = gpd.sjoin_nearest(left_df=self.watermask.gdf_wm_as_pixc,
                                       right_df=gdf_reaches_proj,
-                                      max_distance=3000.,
+                                      max_distance=FLT_LABEL_MAX_DIST,
                                       how="inner",
                                       distance_col="dist")
         dct_label_update = {
