@@ -340,9 +340,18 @@ class WaterMask:
         :return:
         """
 
+        # Get max label value
+        int_max_label = max(dct_label.keys())
+
+        # Update label dtype if necassary
+        if int_max_label >= 255:
+            self.gdf_wm_as_pixc["label"] = self.gdf_wm_as_pixc["label"].astype(np.uint16)
+
+        # update label flag
         for label, indices in dct_label.items():
             self.gdf_wm_as_pixc.loc[indices, "label"] = label
 
+        # update labelled watermask output dtype if necessary
         if dtype_labelled is not None:
             self.dtype_label_out = dtype_labelled
 
