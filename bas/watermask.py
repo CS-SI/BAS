@@ -1,4 +1,5 @@
 # Copyright (C) 2023-2024 CS GROUP France, https://csgroup.eu
+# Copyright (C) 2024 CNES.
 #
 # This file is part of BAS (Buffer Around Sections)
 #
@@ -28,16 +29,13 @@ import os
 import geopandas as gpd
 import numpy as np
 import numpy.ma as ma
-import osgeo
 from osgeo import osr
 import pandas as pd
-from pyproj import CRS
 import rasterio as rio
-from rasterio.features import shapes, rasterize
-from shapely.geometry import shape, Point, Polygon, MultiPolygon, LineString, MultiLineString
-from shapely.ops import linemerge
+from rasterio.features import shapes
+from shapely.geometry import shape, Point, Polygon
 
-from tools import FileExtensionError, DimensionError
+from bas.tools import FileExtensionError, DimensionError
 
 
 # os.environ['USE_PYGEOS'] = '0'
