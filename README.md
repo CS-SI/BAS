@@ -36,6 +36,9 @@ Using a virtual environment is strongly recommended.
 If you have python-3.12 and `sw1Dto2D` is already installed, then running this command will install BAS requirements
 
 ```bash
+# if gdal is not yet installed 
+pip install GDAL==`gdal-config --version`
+
 pip install -e .
 
 # then try to access the entry point
