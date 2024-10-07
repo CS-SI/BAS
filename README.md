@@ -17,7 +17,14 @@ The toolbox works in a specific environment that can be installed through conda 
 
 ```shell
 conda env create -f environment_bas_py38.yml # for python 3.8
+# or
 conda env create -f environment_bas_py310.yml # for python 3.10
+
+# then install BAS (make sure you are in the source directory)
+pip install -e .
+
+# then try to access the entry point
+run_bas -h
 ```
 
 ### General
