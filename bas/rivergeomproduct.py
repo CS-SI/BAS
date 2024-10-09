@@ -1,4 +1,5 @@
 # Copyright (C) 2023-2024 CS GROUP France, https://csgroup.eu
+# Copyright (C) 2024 CNES.
 #
 # This file is part of BAS (Buffer Around Sections)
 #
@@ -31,8 +32,8 @@ import pandas as pd
 from pyproj import CRS
 from shapely.geometry import Point, LineString
 from sw1dto2d.sw1dto2d import SW1Dto2D
-from tools import FileExtensionError
-from tools import project
+from bas.tools import FileExtensionError
+from bas.tools import project
 
 # os.environ['USE_PYGEOS'] = '0'
 
