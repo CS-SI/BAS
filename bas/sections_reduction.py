@@ -1,4 +1,5 @@
 # Copyright (C) 2023-2024 CS GROUP France, https://csgroup.eu
+# Copyright (C) 2024 CNES.
 #
 # This file is part of BAS (Buffer Around Sections)
 #
@@ -29,7 +30,7 @@ from shapely.geometry import LineString, MultiLineString
 from shapely.geometry import Point, MultiPoint
 from shapely.geometry import GeometryCollection
 
-from constants import FLT_TOL_LEN_DEFAULT, FLT_TOL_DIST_DEFAULT
+from bas.constants import FLT_TOL_LEN_DEFAULT, FLT_TOL_DIST_DEFAULT
 
 
 def link_multilinestring_pieces(multiline_in, l_idx=None):

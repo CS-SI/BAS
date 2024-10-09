@@ -1,4 +1,5 @@
 # Copyright (C) 2023-2024 CS GROUP France, https://csgroup.eu
+# Copyright (C) 2024 CNES.
 #
 # This file is part of BAS (Buffer Around Sections)
 #
@@ -24,6 +25,7 @@ basprocessor.py
 : From an external watermask + a (set of) river centerline(s) and associated node along it (stations or calculus points),
 derive a width estimation at said-nodes observed within the mask
 """
+
 import os
 from datetime import datetime
 import geopandas as gpd
@@ -31,17 +33,14 @@ import pandas as pd
 from pyproj import CRS
 import rasterio as rio
 import shapely
-from shapely.geometry import MultiLineString, LineString, MultiPolygon
+from shapely.geometry import MultiPolygon
 import numpy as np
 
-from tools import DisjointBboxError, FileExtensionError
-from watermask import WaterMask
-from widths import compute_widths_from_single_watermask
-from sections_reduction import reduce_section
-from constants import FLT_TOL_LEN_DEFAULT, FLT_TOL_DIST_DEFAULT, FLT_LABEL_MAX_DIST
-
-
-# os.environ['USE_PYGEOS'] = '0'
+from bas.tools import DisjointBboxError
+from bas.watermask import WaterMask
+from bas.widths import compute_widths_from_single_watermask
+from bas.sections_reduction import reduce_section
+from bas.constants import FLT_TOL_LEN_DEFAULT, FLT_TOL_DIST_DEFAULT, FLT_LABEL_MAX_DIST
 
 
 class BASProcessor:

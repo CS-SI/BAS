@@ -1,4 +1,5 @@
 # Copyright (C) 2023-2024 CS GROUP France, https://csgroup.eu
+# Copyright (C) 2024 CNES.
 #
 # This file is part of BAS (Buffer Around Sections)
 #
@@ -19,25 +20,35 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
-sys.path.append("/home/cemery/Work/git/BAS/bas")
+import os
+# import sys
+# sys.path.append("/home/cemery/Work/git/BAS/bas")
 
 import geopandas as gpd
 
-from basprocessor import BASProcessor
-from rivergeomproduct import RiverGeomProduct
+from bas.basprocessor import BASProcessor
+from bas.rivergeomproduct import RiverGeomProduct
 
 # Input file
-watermask_tif = "example_watermask.tif"
-ref_watermask_tif = "example_ref_waterbodies.shp"
+ex_dir = os.path.dirname(__file__)
+watermask_tif = os.path.join(ex_dir, "example_watermask.tif")
+ref_watermask_tif = os.path.join(ex_dir, "example_ref_waterbodies.shp")
 
 # Simple example : sections are ready to use
-shp_reaches_smpl = "example_reaches_simple.shp"
-shp_sections_smpl = "example_sections_simple.shp"
+shp_reaches_smpl = os.path.join(ex_dir, "example_reaches_simple.shp")
+shp_sections_smpl = os.path.join(ex_dir, "example_sections_simple.shp")
 
 # Complex example : sections have to be derived
-shp_reaches_cplx = "example_reaches_cplx.shp"
-shp_nodes_cplx = "example_nodes_cplx_up.shp"
+shp_reaches_cplx = os.path.join(ex_dir, "example_reaches_cplx.shp")
+shp_nodes_cplx = os.path.join(ex_dir, "example_nodes_cplx_up.shp")
+
+# Load reference waterbodies - cfg 4-5
+gdf_waterbodies = gpd.read_file(ref_watermask_tif)
+
+# Load sections and reaches - cfg 1-4
+gdf_reaches = gpd.read_file(shp_reaches_smpl)
+gdf_sections = gpd.read_file(shp_sections_smpl)
+gdf_sections.rename(mapper={"segment": "id"}, inplace=True, axis=1)
 
 
 def example_1():
@@ -545,7 +556,7 @@ def example_8():
     attr_tol_dist = dct_cfg_V8["reduce"]["flt_tol_dist"]
     gdf_sections_ortho.insert(loc=3, column=attr_tol_dist, value=0.)
     gdf_sections_ortho[attr_tol_dist] = (0.5 * gdf_nodes_cplx.loc[gdf_sections_ortho.index, attr_meander_length] /
-                                      gdf_nodes_cplx.loc[gdf_sections_ortho.index, attr_sinuosity])
+                                         gdf_nodes_cplx.loc[gdf_sections_ortho.index, attr_sinuosity])
 
     # Instanciate basprocessor(s)
     processor_a = BASProcessor(
@@ -580,15 +591,7 @@ def example_8():
     print("===== BASProcessing Example #8 = END =====")
 
 
-if __name__ == "__main__":
-    # Load reference waterbodies - cfg 4-5
-    gdf_waterbodies = gpd.read_file(ref_watermask_tif)
-
-    # Load sections and reaches - cfg 1-4
-    gdf_reaches = gpd.read_file(shp_reaches_smpl)
-    gdf_sections = gpd.read_file(shp_sections_smpl)
-    gdf_sections.rename(mapper={"segment": "id"}, inplace=True, axis=1)
-
+def main():
     # Run example 1
     example_1()
 
@@ -612,3 +615,7 @@ if __name__ == "__main__":
 
     # Run example 8
     example_8()
+
+
+if __name__ == "__main__":
+    main()

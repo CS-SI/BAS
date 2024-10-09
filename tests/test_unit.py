@@ -1,4 +1,5 @@
 # Copyright (C) 2023-2024 CS GROUP France, https://csgroup.eu
+# Copyright (C) 2024 CNES.
 #
 # This file is part of BAS (Buffer Around Sections)
 #
@@ -24,22 +25,23 @@ import os
 os.environ['USE_PYGEOS'] = '0'
 import geopandas as gpd
 
-from basprocessor import BASProcessor
+from bas.basprocessor import BASProcessor
 
+test_dir = os.path.dirname(__file__)
 # Inputs for test_1
-str_watermask_1_tif = "unit_watermask_1.tif"
-str_reaches_1_shp = "unit_centerline_1.shp"
-str_sections_1_shp = "unit_sections_1.shp"
+str_watermask_1_tif = os.path.join(test_dir, "unit_watermask_1.tif")
+str_reaches_1_shp = os.path.join(test_dir, "unit_centerline_1.shp")
+str_sections_1_shp = os.path.join(test_dir, "unit_sections_1.shp")
 
 # Inputs for test_2
-str_watermask_2_tif = "unit_watermask_2.tif"
-str_reaches_2_shp = "unit_centerline_2.shp"
-str_sections_2_shp = "unit_sections_2.shp"
+str_watermask_2_tif = os.path.join(test_dir, "unit_watermask_2.tif")
+str_reaches_2_shp = os.path.join(test_dir, "unit_centerline_2.shp")
+str_sections_2_shp = os.path.join(test_dir, "unit_sections_2.shp")
 
 # Inputs for test_3
-str_watermask_3_tif = "unit_watermask_3.tif"
-str_reaches_3_shp = "unit_centerline_3.shp"
-str_sections_3_shp = "unit_sections_3.shp"
+str_watermask_3_tif = os.path.join(test_dir, "unit_watermask_3.tif")
+str_reaches_3_shp = os.path.join(test_dir, "unit_centerline_3.shp")
+str_sections_3_shp = os.path.join(test_dir, "unit_sections_3.shp")
 
 
 def test_1():
