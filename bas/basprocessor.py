@@ -120,9 +120,6 @@ class BASProcessor:
         """Check if sections and watermask are spatially compatible
         """
 
-        print("----- WidthProcessing = CheckBboxCompatibility -----")
-        print("")
-
         if self.gdf_sections.crs != CRS(4326):
             gdf_crs_sections = self.gdf_sections.to_crs(CRS(4326))
         else:
@@ -136,9 +133,6 @@ class BASProcessor:
 
         if polygon_watermask.disjoint(polygon_sections):
             raise DisjointBboxError
-
-        print("")
-        print("----- CheckBboxCompatibility : Done -----")
 
     def preprocessing(self):
         """Preprocessing: load watermask, reproject sections et check bounding boxes intersections
@@ -208,9 +202,6 @@ class BASProcessor:
 
         """
 
-        print("----- WidthProcessing = Processing -----")
-        print("")
-
         # Check cfg
         dct_cfg = self.read_cfg(dct_cfg)
 
@@ -234,8 +225,6 @@ class BASProcessor:
         -------
 
         """
-
-        print(" ---- Cleaning watermask ---- ")
 
         # Check config_dct
         if dct_cfg is None:
@@ -292,8 +281,6 @@ class BASProcessor:
     def label_watermask(self):
         """Label watermask into individual regions associated to a unique reach each
         """
-
-        print(" ---- Label watermask ---- ")
 
         # Gather reaches and project them into the watermask coordinate system
         gdf_reaches_proj = self.gdf_reaches.loc[:, [self.attr_reachid, "geometry"]].to_crs(epsg=self.watermask.crs_epsg)
@@ -415,8 +402,6 @@ class BASProcessor:
 
         """
 
-        print(" ---- Reduce sections ---- ")
-
         # Check config_dct
         if dct_cfg is None:
             dct_cfg = self.dct_cfg
@@ -471,14 +456,10 @@ class BASProcessor:
         :return:
         """
 
-        print("----- WidthProcessing = PostProcessing -----")
-        print("")
-
         # Prepare sections
         gdf_wrk_sections = self.reduce_sections(dct_cfg)
 
         # Process width
-        print("---- Compute widths ----")
         if str_fpath_wm_in is None:
             str_fpath_wm_tif = self.watermask.save_wm(fmt="tif",
                                                   bool_clean=dct_cfg["clean"]["bool_clean"],
@@ -493,8 +474,5 @@ class BASProcessor:
                                                                  watermask=src,
                                                                  sections=gdf_wrk_sections,
                                                                  buffer_length=8.0 * self.watermask.res)
-
-        print("")
-        print("----- PostProcessing : Done -----")
 
         return gdf_widths, str_fpath_wm_tif
