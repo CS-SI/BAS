@@ -347,7 +347,7 @@ class WaterMask:
 
         # update label flag
         for label, indices in dct_label.items():
-            self.gdf_wm_as_pixc.loc[indices, "label"] = label
+            self.gdf_wm_as_pixc.loc[indices, "label"] = int(label)
 
         # update labelled watermask output dtype if necessary
         if dtype_labelled is not None:
