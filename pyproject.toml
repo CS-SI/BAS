@@ -21,7 +21,7 @@
 
 [project]
 name = "bas"
-version = "0"
+version = "1.0.0"
 description = "Buffer Around Sections"
 readme = "README.md"
 requires-python = ">=3.8"
