@@ -435,10 +435,14 @@ class BASProcessor:
             reach_id = self.gdf_reaches.at[label, self.attr_reachid]
             lin_reach = self.gdf_reaches.at[label, "geometry"]
 
+            # Reduce section
             gdfsub_sections_byreach_onregion = self._reduce_sections_over_reach(reach_id=reach_id,
                                                                                 lin_reach=lin_reach,
                                                                                 pol_region=pol_region,
                                                                                 dct_cfg=dct_cfg)
+
+            # Add label associated to sections over the currect reach
+            gdfsub_sections_byreach_onregion.insert(2, "label", int(label))
 
             l_gdfsub_sections.append(gdfsub_sections_byreach_onregion)
 
