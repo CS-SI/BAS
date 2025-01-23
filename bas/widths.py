@@ -31,10 +31,14 @@ from rasterio.mask import mask
 from rasterio.features import shapes
 from shapely.geometry import shape, MultiPolygon
 
-# os.environ['USE_PYGEOS'] = '0'
+from matplotlib import pyplot as plt
 
 
-def compute_widths_from_single_watermask(scenario, watermask, sections, buffer_length=25.0, index_attr="index",
+def compute_widths_from_single_watermask(scenario,
+                                         watermask,
+                                         sections,
+                                         buffer_length=25.0,
+                                         index_attr="index",
                                          **kwargs):
     """Compute the widths for a list of cross-sections using a single watermask
 
@@ -51,6 +55,8 @@ def compute_widths_from_single_watermask(scenario, watermask, sections, buffer_l
             Name of the attribute that contains indexes in the GeoDataFrame.
         kwargs : dict
             Other keyword arguments:
+            label_attr : str
+                in sections argument, attribute name containing segmentation label for each section
             bool_print_dry : bool
                 If true, print out information on possible dry sections
             min_width : float
@@ -69,7 +75,7 @@ def compute_widths_from_single_watermask(scenario, watermask, sections, buffer_l
     elif scenario == 1:  # Estimate widths + uncertainty from section intersections
         raise NotImplementedError("Scenario 1 not implemented yet..")
     elif scenario == 10:  # Estimate widths + count banks within buffer
-        raise NotImplementedError("Scenario 1 not implemented yet..")
+        raise NotImplementedError("Scenario 10 not implemented yet..")
     elif scenario == 11:  # scenario 1 + scenario 10
         return compute_widths_from_single_watermask_scenario11(watermask,
                                                                sections,
@@ -104,6 +110,9 @@ def compute_widths_from_single_watermask_base(watermask, sections, buffer_length
         """
 
     # Parse extra argument keywords
+    label_attr = None
+    if "label_attr" in kwargs:
+        label_attr = kwargs["label_attr"]
     bool_print_dry = False
     if "bool_print_dry" in kwargs:
         bool_print_dry = kwargs["bool_print_dry"]
@@ -132,6 +141,9 @@ def compute_widths_from_single_watermask_base(watermask, sections, buffer_length
     # Add a column to contain estimated width
     updated_sections.insert(len(updated_sections.columns) - 1, "width",
                             np.nan)
+    # Add a column to contain buffer area
+    updated_sections.insert(len(updated_sections.columns) - 1, "buffer_area",
+                            np.nan)
     # Add a column to contain flag indicating if buffer is full of water (and so potentially sections is too short)
     updated_sections.insert(len(updated_sections.columns) - 1, "flg_bufful",
                             np.nan)
@@ -143,6 +155,7 @@ def compute_widths_from_single_watermask_base(watermask, sections, buffer_length
 
     # Apply buffer to sections
     sections_buffered = sections.buffer(0.5 * buffer_length, cap_style=2)
+    updated_sections["buffer_area"] = sections_buffered.area
 
     # Export
     if export_buffered_sections:
@@ -160,13 +173,14 @@ def compute_widths_from_single_watermask_base(watermask, sections, buffer_length
 
         else:
             try:
-                out_image, out_transform = mask(watermask, shapes=[section_buffered], crop=True, nodata=0)
-
-                # Count number of cells
-                buffer_pixels = np.sum(out_image == 0) + np.sum(out_image > 0)
+                out_image, out_transform = mask(watermask, shapes=[section_buffered], crop=True, nodata=watermask.nodata)
 
                 # Count number of water cells
-                water_pixels = np.sum(out_image > 0)
+                if label_attr is None:
+                    water_pixels = np.sum(out_image != watermask.nodata)
+                else:
+                    int_label = sections.at[section_index, label_attr]
+                    water_pixels = np.sum(out_image == int_label)
                 water_area = water_pixels * pixel_area
 
                 # Compute widths from area / buffer_length
@@ -175,9 +189,11 @@ def compute_widths_from_single_watermask_base(watermask, sections, buffer_length
                     if effective_width < min_width:
                         effective_width = min_width
 
-                # Update with value in the GeoDataFrame
-                updated_sections.loc[section_index, "width"] = effective_width
-                if buffer_pixels == water_pixels:
+                # Update width value in the GeoDataFrame
+                updated_sections.at[section_index, "width"] = effective_width
+
+                # Check if buffer is full
+                if updated_sections.at[section_index, "buffer_area"] == water_area:
                     updated_sections.loc[section_index, "flg_bufful"] = 1
                 else:
                     updated_sections.loc[section_index, "flg_bufful"] = 0
@@ -195,7 +211,10 @@ def compute_widths_from_single_watermask_base(watermask, sections, buffer_length
     return updated_sections, sections_buffered
 
 
-def compute_widths_from_single_watermask_scenario11(watermask, sections, buffer_length=25.0, index_attr="index",
+def compute_widths_from_single_watermask_scenario11(watermask,
+                                                    sections,
+                                                    buffer_length=25.0,
+                                                    index_attr="index",
                                                     **kwargs):
     """Compute the widths for a list of cross-sections using a watermask
 
@@ -211,6 +230,8 @@ def compute_widths_from_single_watermask_scenario11(watermask, sections, buffer_
             Length of the buffer to apply to cross-sections.
         kwargs : dict
             Other keyword arguments:
+            label_attr : str
+                in sections argument, attribute name containing segmentation label for each section
             bool_print_dry : bool
                 If true, print out information on possible dry sections
             min_width : float
@@ -220,6 +241,9 @@ def compute_widths_from_single_watermask_scenario11(watermask, sections, buffer_
         """
 
     # Parse extra argument keywords
+    label_attr = None
+    if "label_attr" in kwargs:
+        label_attr = kwargs["label_attr"]
     bool_print_dry = False
     if "bool_print_dry" in kwargs:
         bool_print_dry = kwargs["bool_print_dry"]
@@ -248,6 +272,9 @@ def compute_widths_from_single_watermask_scenario11(watermask, sections, buffer_
     # Add a column to contain estimated width
     updated_sections.insert(len(updated_sections.columns) - 1, "width",
                             np.nan)
+    # Add a column to contain buffer area
+    updated_sections.insert(len(updated_sections.columns) - 1, "buffer_area",
+                            np.nan)
     # Add a flag column indicating if buffer is full of water (and so potentially sections is too short)
     updated_sections.insert(len(updated_sections.columns) - 1, "flg_bufful",
                             np.nan)
@@ -263,8 +290,9 @@ def compute_widths_from_single_watermask_scenario11(watermask, sections, buffer_
         print("Inputs in epsg:4326 are projected to epsg:3857, not effective away from equator.")
         sections = sections.to_crs(epsg=3857)
 
-    # Apply buffer to sections
+    # Apply buffer to sections and store their area
     sections_buffered = sections.buffer(0.5 * buffer_length, cap_style=2)
+    updated_sections["buffer_area"] = sections_buffered.area
 
     # Export
     if export_buffered_sections:
@@ -289,13 +317,14 @@ def compute_widths_from_single_watermask_scenario11(watermask, sections, buffer_
 
         else:
             try:
-                out_image, out_transform = mask(watermask, shapes=[section_buffered], crop=True, nodata=0)
-
-                # Count number of cells
-                buffer_pixels = np.sum(out_image == 0) + np.sum(out_image > 0)
+                out_image, out_transform = mask(watermask, shapes=[section_buffered], crop=True, nodata=watermask.nodata)
 
                 # Count number of water cells
-                water_pixels = np.sum(out_image > 0)
+                if label_attr is None:
+                    water_pixels = np.sum(out_image != watermask.nodata)
+                else:
+                    int_label = sections.at[section_index,label_attr]
+                    water_pixels = np.sum(out_image==int_label)
                 water_area = water_pixels * pixel_area
 
                 # Compute widths from area / buffer_length
@@ -304,9 +333,11 @@ def compute_widths_from_single_watermask_scenario11(watermask, sections, buffer_
                     if effective_width < min_width:
                         effective_width = min_width
 
-                # Update with value in the GeoDataFrame
-                updated_sections.loc[section_index, "width"] = effective_width
-                if buffer_pixels == water_pixels:
+                # Update width value in the GeoDataFrame
+                updated_sections.at[section_index, "width"] = effective_width
+
+                # Check if buffer is full
+                if updated_sections.at[section_index,"buffer_area"] == water_area:
                     updated_sections.loc[section_index, "flg_bufful"] = 1
                 else:
                     updated_sections.loc[section_index, "flg_bufful"] = 0
