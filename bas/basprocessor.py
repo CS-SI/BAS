@@ -477,6 +477,7 @@ class BASProcessor:
             gdf_widths, _ = compute_widths_from_single_watermask(scenario=dct_cfg["widths"]["scenario"],
                                                                  watermask=src,
                                                                  sections=gdf_wrk_sections,
-                                                                 buffer_length=8.0 * self.watermask.res)
+                                                                 buffer_length=8.0 * self.watermask.res,
+                                                                 label_attr="label")
 
         return gdf_widths, str_fpath_wm_tif
