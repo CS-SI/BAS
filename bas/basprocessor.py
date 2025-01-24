@@ -389,6 +389,10 @@ class BASProcessor:
 
             return gdfsub_sections_byreach_onregion
 
+        else:
+            print("Warning: no sections intersect the region..")
+            return None
+
     def reduce_sections(self, dct_cfg=None, flt_tol_len=FLT_TOL_LEN_DEFAULT, flt_tol_dist=FLT_TOL_DIST_DEFAULT):
         """Reduce sections geometry to its associated region
 
@@ -441,10 +445,12 @@ class BASProcessor:
                                                                                 pol_region=pol_region,
                                                                                 dct_cfg=dct_cfg)
 
-            # Add label associated to sections over the currect reach
-            gdfsub_sections_byreach_onregion.insert(2, "label", int(label))
+            if gdfsub_sections_byreach_onregion is not None:
+                # Add label associated to sections over the currect reach
+                gdfsub_sections_byreach_onregion.insert(2, "label", int(label))
 
-            l_gdfsub_sections.append(gdfsub_sections_byreach_onregion)
+                # Add reduced section to the full set
+                l_gdfsub_sections.append(gdfsub_sections_byreach_onregion)
 
         # Gather all sections
         gdf_sections_out = pd.concat(l_gdfsub_sections)
