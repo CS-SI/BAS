@@ -343,8 +343,14 @@ def compute_widths_from_single_watermask_scenario11(watermask,
                     updated_sections.loc[section_index, "flg_bufful"] = 0
 
                 # Compute water buffer polygon
-                l_geom_water_pols = [shape(feat) for feat, value in
-                                     shapes(out_image, mask=(out_image > 0), transform=out_transform)]
+                if label_attr is None:
+                    l_geom_water_pols = [shape(feat) for feat, value in
+                                     shapes(out_image, mask=(out_image != watermask.nodata), transform=out_transform)]
+                else:
+                    int_label = sections.at[section_index,label_attr]
+                    l_geom_water_pols = [shape(feat) for feat, value in
+                                         shapes(out_image, mask=(out_image==int_label),
+                                                transform=out_transform)]
 
                 l_shape.append(MultiPolygon(l_geom_water_pols))
                 l_buffer_waterarea.append(water_area)
