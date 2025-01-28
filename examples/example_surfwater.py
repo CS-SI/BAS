@@ -93,34 +93,45 @@ def compute_nodescale_width(gdf_widths_ortho=None, gdf_widths_chck=None):
     )
 
     # Add theta and sin_theta columns to output width dataframe
+    # Theta is an angle in degree
+    LOGGER.info("Set theta components")
     gdf_widths_out.insert(
         loc=len(gdf_widths_out.columns) - 1,
         column="theta",
         value=gdf_widths_chck["theta"],
     )
+    # sin(theta) was previously computed from angle in radians
     gdf_widths_out.insert(
         loc=len(gdf_widths_out.columns) - 1,
         column="sin_theta",
         value=gdf_widths_chck["sin_theta"],
     )
 
+    # Need to convert theta back to radians to apply np.cos
     gdf_widths_out.insert(
         loc=len(gdf_widths_out.columns) - 1, column="cos_theta", value=np.nan
     )
-    gdf_widths_out["cos_theta"] = gdf_widths_chck["theta"].apply(np.cos)
+    gdf_widths_out["cos_theta"] = gdf_widths_chck["theta"].apply(lambda theta_deg : np.cos(theta_deg*np.pi/180.))
 
     # Add final width product column
+    LOGGER.info("Set width")
     gdf_widths_out.insert(
         loc=len(gdf_widths_out.columns) - 1, column="width", value=np.nan
     )
 
-    ser_cos_theta_tmp = gdf_widths_out["theta"].apply(lambda a: np.abs(np.cos(a)))
-    gdf_widths_out["width"] = gdf_widths_out["width_1"] + gdf_widths_out["width_2"].mul(
-        ser_cos_theta_tmp
-    )
-    gdf_widths_out["width"] = gdf_widths_out["width"].div(
-        ser_cos_theta_tmp.apply(lambda ct: ct + 1.0)
-    )
+    # beta = 0 OR W2 == nan : W = W1
+    # If no intersection between base section and the neighbouring one, check section is irrelevant
+    # => beta=0 + no contribution from W2
+    ser_mask_beta = gdf_widths_out["beta"].apply(lambda beta: True if beta==0 else False)
+    ser_mask_w2 = gdf_widths_out["width_2"].apply(lambda w2: True if np.isnan(w2) else False)
+    ser_mask = ser_mask_beta | ser_mask_w2
+    gdf_widths_out.loc[ser_mask, "width"] = gdf_widths_out.loc[ser_mask, "width_1"]
+
+    # Else beta>0 AND W2!=nan : W = (W1 + |cos(theta)|xW2)/(1+|cos(theta)|)
+    ser_cos_theta_tmp = gdf_widths_out["cos_theta"].apply(np.abs)
+    gdf_widths_out.loc[~ser_mask, "width"] = gdf_widths_out.loc[~ser_mask, "width_1"] + gdf_widths_out.loc[~ser_mask, "width_2"].mul(ser_cos_theta_tmp)
+    gdf_widths_out.loc[~ser_mask, "width"] = gdf_widths_out.loc[~ser_mask, "width"]
+    gdf_widths_out.loc[~ser_mask, "width"] = gdf_widths_out.loc[~ser_mask, "width"].div(ser_cos_theta_tmp[~ser_mask].apply(lambda ct: ct + 1.0))
 
     del ser_cos_theta_tmp
 
