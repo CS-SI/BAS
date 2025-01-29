@@ -195,6 +195,8 @@ class CloneSW1Dto2D(SW1Dto2D):
 
 
 class RiverGeomProduct:
+    """Class to handle 1d-riverline geometries and sections
+    """
 
     def __init__(self):
         """Class constructor
@@ -233,40 +235,21 @@ class RiverGeomProduct:
         self.dct_centerline = {}  # Reach-scale geometry/xs/p_wse/p_width -- use to derive sections from sw1dto2d
 
     @classmethod
-    def from_shp(cls, reaches_shp=None, nodes_shp=None, bool_edge=True, dct_attr=None):
-        """Instanciate object from shapefiles
+    def from_gdf(cls, gdf_reaches=None, gdf_nodes=None, bool_edge=True, dct_attr=None):
+        """Instanciate object from geodataframe objects
 
         Parameters
         ----------
-        reaches_shp : str
-        nodes_shp : str
+        gdf_reaches : gpd.GeoDataFrame
+        gdf_nodes : gpd.GeoDataFrame
         dct_attr : dct
         { "reaches": { "reaches_id" : ""}, "nodes": {"reaches_id" : "", "nodes_id": "", "pwidth": "", "pwse": ""} }
         Returns
         -------
         klass : RiverGeomProduct object
-
         """
 
-        # Check reaches_shp input
-        if not os.path.isfile(reaches_shp):
-            raise FileExistsError("Input reaches_shp file does not exist..")
-        else:
-            if not reaches_shp.endswith(".shp"):
-                raise FileExtensionError(message="Input file is not a .shp")
-
-        # Check reaches_shp input
-        if not os.path.isfile(nodes_shp):
-            raise FileExistsError("Input nodes_shp file does not exist..")
-        else:
-            if not nodes_shp.endswith(".shp"):
-                raise FileExtensionError(message="Input file is not a .shp")
-
         klass = RiverGeomProduct()
-
-        # Load 1D geometries
-        gdf_reaches = gpd.read_file(reaches_shp)
-        gdf_nodes = gpd.read_file(nodes_shp)
 
         # Count available geometries
         klass.int_reach_dim = len(gdf_reaches)
@@ -320,6 +303,47 @@ class RiverGeomProduct:
                                                                        klass.npar_flt_nodegrp_plat,
                                                                        lon_0=0.5 * (klass.minlon + klass.maxlon),
                                                                        lat_0=0.5 * (klass.minlat + klass.maxlat))
+
+        return klass
+
+    @classmethod
+    def from_shp(cls, reaches_shp=None, nodes_shp=None, bool_edge=True, dct_attr=None):
+        """Instanciate object from shapefiles
+
+        Parameters
+        ----------
+        reaches_shp : str
+        nodes_shp : str
+        dct_attr : dct
+        { "reaches": { "reaches_id" : ""}, "nodes": {"reaches_id" : "", "nodes_id": "", "pwidth": "", "pwse": ""} }
+        Returns
+        -------
+        klass : RiverGeomProduct object
+
+        """
+
+        # Check reaches_shp input
+        if not os.path.isfile(reaches_shp):
+            raise FileExistsError("Input reaches_shp file does not exist..")
+        else:
+            if not reaches_shp.endswith(".shp"):
+                raise FileExtensionError(message="Input file is not a .shp")
+
+        # Check reaches_shp input
+        if not os.path.isfile(nodes_shp):
+            raise FileExistsError("Input nodes_shp file does not exist..")
+        else:
+            if not nodes_shp.endswith(".shp"):
+                raise FileExtensionError(message="Input file is not a .shp")
+
+        # Load 1D geometries
+        gdf_reaches = gpd.read_file(reaches_shp)
+        gdf_nodes = gpd.read_file(nodes_shp)
+
+        klass = RiverGeomProduct.from_gdf(gdf_reaches=gdf_reaches,
+                                          gdf_nodes=gdf_nodes,
+                                          bool_edge=bool_edge,
+                                          dct_attr=dct_attr)
 
         return klass
 
