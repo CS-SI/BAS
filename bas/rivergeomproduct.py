@@ -165,6 +165,8 @@ def modified_compute_xs_parameters(obj_sw1dto2d, lin_centerline_in):
 
 
 class CloneSW1Dto2D(SW1Dto2D):
+    """SW1Dto2D-derived class to access some hidden attributess
+    """
 
     def __init__(self, model_output_1d: pd.DataFrame, curvilinear_abscissa_key: str, heights_key: str, widths_key: str,
                  centerline: LineString):
