@@ -225,14 +225,15 @@ def example_4():
     print("===== BASProcessing Example #4 = END =====")
 
 
-def example_5():
-    """Example_5 :
+def example_5a():
+    """Example_5a :
+        Initialize reaches/nodes from shp
         Watermask cleaning with reference waterbodies + watermask labelling
         Sections NOT available
         Reduce section - "hydrogeom" + providing tolerance values as constant
     """
 
-    print("===== BASProcessing Example #5 = BEGIN =====")
+    print("===== BASProcessing Example #5a = BEGIN =====")
     print("")
 
     # Load reaches
@@ -304,11 +305,96 @@ def example_5():
 
     gdf_widths_a["reach_id"] = gdf_widths_a["reach_id"].astype(str)
     gdf_widths_a["node_id"] = gdf_widths_a["node_id"].astype(int).astype(str)
-    gdf_widths_a.to_file("widths_example5.shp")
+    gdf_widths_a.to_file("widths_example5a.shp")
 
     print("")
-    print("===== BASProcessing Example #5 = END =====")
+    print("===== BASProcessing Example #5a = END =====")
 
+
+def example_5b():
+    """Example_5b :
+        Initialize reaches/sections from gdf
+        Watermask cleaning with reference waterbodies + watermask labelling
+        Sections NOT available
+        Reduce section - "hydrogeom" + providing tolerance values as constant
+    """
+
+    print("===== BASProcessing Example #5b = BEGIN =====")
+    print("")
+
+    # Load reaches
+    gdf_reaches_cplx = gpd.read_file(shp_reaches_cplx)
+    gdf_nodes_cplx = gpd.read_file(shp_nodes_cplx)
+
+    # Compute sections
+    dct_geom_attr = {"reaches": {"reaches_id": "reach_id"},
+                     "nodes": {"reaches_id": "reach_id",
+                               "nodes_id": "node_id",
+                               "pwidth": "p_width",
+                               "pwse": "p_wse"}}
+    obj_rivergeom = RiverGeomProduct.from_gdf(gdf_reaches=gdf_reaches_cplx,
+                                              gdf_nodes=gdf_nodes_cplx,
+                                              bool_edge=False,
+                                              dct_attr=dct_geom_attr)
+    obj_rivergeom.draw_allreaches_centerline()
+    gdf_sections_ortho = obj_rivergeom.draw_allreaches_sections(type="ortho", flt_factor_width=15.)
+
+    # Set configs #5
+    dct_cfg_V5 = {"clean": {"bool_clean": True,
+                            "type_clean": "waterbodies",
+                            "fpath_wrkdir": "/home/cemery/Work/git/BAS/examples",
+                            "gdf_waterbodies": gdf_waterbodies
+                            },
+                  "label": {"bool_label": True,
+                            "type_label": "base",
+                            "fpath_wrkdir": "/home/cemery/Work/git/BAS/examples"
+                            },
+                  "reduce": {"how": "hydrogeom",
+                             "attr_nb_chan_max": "n_chan_max",
+                             "attr_locxs": "loc_xs",
+                             "attr_nodepx": "x_proj",
+                             "attr_nodepy": "y_proj",
+                             "flt_tol_len": 0.05,
+                             "flt_tol_dist": 1000.},
+                  "widths": {"scenario": 11
+                             }
+                  }
+
+    gdf_sections_ortho.insert(loc=2, column=dct_cfg_V5["reduce"]["attr_nb_chan_max"], value=0)
+    gdf_sections_ortho[dct_cfg_V5["reduce"]["attr_nb_chan_max"]] = gdf_nodes_cplx.loc[
+        gdf_sections_ortho.index, dct_cfg_V5["reduce"]["attr_nb_chan_max"]]
+
+    # Instanciate basprocessor(s)
+    processor_a = BASProcessor(
+        str_watermask_tif=watermask_tif,
+        gdf_sections=gdf_sections_ortho,
+        gdf_reaches=gdf_reaches_cplx,
+        attr_reachid="reach_id",
+        str_proj="proj",
+        str_provider="EO"
+    )
+    processor_a.preprocessing()
+
+    gser_proj_nodes = gdf_nodes_cplx["geometry"].to_crs(processor_a.watermask.crs)
+
+    processor_a.gdf_sections.insert(loc=3, column=dct_cfg_V5["reduce"]["attr_nodepx"], value=0.)
+    processor_a.gdf_sections[dct_cfg_V5["reduce"]["attr_nodepx"]] = gser_proj_nodes.loc[
+        processor_a.gdf_sections.index].x
+
+    processor_a.gdf_sections.insert(loc=4, column=dct_cfg_V5["reduce"]["attr_nodepy"], value=0.)
+    processor_a.gdf_sections[dct_cfg_V5["reduce"]["attr_nodepy"]] = gser_proj_nodes.loc[
+        processor_a.gdf_sections.index].y
+
+    processor_a.processing(dct_cfg_V5)
+
+    gdf_widths_a, _ = processor_a.postprocessing(dct_cfg_V5)
+
+    gdf_widths_a["reach_id"] = gdf_widths_a["reach_id"].astype(str)
+    gdf_widths_a["node_id"] = gdf_widths_a["node_id"].astype(int).astype(str)
+    gdf_widths_a.to_file("widths_example5b.shp")
+
+    print("")
+    print("===== BASProcessing Example #5b = END =====")
 
 def example_6():
     """Example_6 :
@@ -592,29 +678,30 @@ def example_8():
 
 
 def main():
-    # Run example 1
-    example_1()
+    # # Run example 1
+    # example_1()
+    #
+    # # Run example 2
+    # example_2()
+    #
+    # # Run example 3
+    # example_3()
+    #
+    # # Run example 4
+    # example_4()
 
-    # Run example 2
-    example_2()
+    # Run examples 5
+    example_5a()
+    example_5b()
 
-    # Run example 3
-    example_3()
-
-    # Run example 4
-    example_4()
-
-    # Run example 5
-    example_5()
-
-    # Run example 6
-    example_6()
-
-    # Run example 7
-    example_7()
-
-    # Run example 8
-    example_8()
+    # # Run example 6
+    # example_6()
+    #
+    # # Run example 7
+    # example_7()
+    #
+    # # Run example 8
+    # example_8()
 
 
 if __name__ == "__main__":
