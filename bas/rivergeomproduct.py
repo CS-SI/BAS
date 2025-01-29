@@ -289,7 +289,7 @@ class RiverGeomProduct:
 
         # Get reaches information
         klass.npar_int_reachgrp_reachid = gdf_reaches[dct_attr["reaches"]["reaches_id"]].to_numpy()
-        klass.minlon, klass.minlat, klass.maxlon, klass.maxlat = gdf_reaches.total_bounds
+        klass.flt_minlon, klass.flt_minlat, klass.flt_maxlon, klass.flt_maxlat = gdf_reaches.total_bounds
 
         # Compute reach projected-geometry
         if klass.bool_input_crs:
@@ -300,12 +300,18 @@ class RiverGeomProduct:
                 print(err)
                 print("Reproject in default laea system")
                 gser_projected_reaches = gdf_reaches["geometry"].apply(
-                    lambda lin_reach: default_reproject_reach(lin_reach, klass.minlon, klass.minlat, klass.maxlon,
-                                                              klass.maxlat))
+                    lambda lin_reach: default_reproject_reach(lin_reach,
+                                                              klass.flt_minlon,
+                                                              klass.flt_minlat,
+                                                              klass.flt_maxlon,
+                                                              klass.flt_maxlat))
         else:
             gser_projected_reaches = gdf_reaches["geometry"].apply(
-                lambda lin_reach: default_reproject_reach(lin_reach, klass.minlon, klass.minlat, klass.maxlon,
-                                                          klass.maxlat))
+                lambda lin_reach: default_reproject_reach(lin_reach,
+                                                          klass.flt_minlon,
+                                                          klass.flt_minlat,
+                                                          klass.flt_maxlon,
+                                                          klass.flt_maxlat))
 
         # Sort reach information
         for index, row in gdf_reaches.iterrows():
@@ -346,18 +352,20 @@ class RiverGeomProduct:
                 print("Error while trying to reproject nodes in input crs")
                 print(err)
                 print("Reproject in default laea system")
+                flt_mid_lon = 0.5 * (klass.flt_minlon + klass.flt_maxlon)
+                flt_mid_lat = 0.5 * (klass.flt_minlat + klass.flt_maxlat)
                 klass.npar_flt_nodegrp_px, klass.npar_flt_nodegrp_py = project(klass.npar_flt_nodegrp_plon,
                                                                                klass.npar_flt_nodegrp_plat,
-                                                                               lon_0=0.5 * (
-                                                                                       klass.minlon + klass.maxlon),
-                                                                               lat_0=0.5 * (
-                                                                                       klass.minlat + klass.maxlat))
+                                                                               lon_0=flt_mid_lon,
+                                                                               lat_0=flt_mid_lat)
 
         else:
+            flt_mid_lon = 0.5 * (klass.flt_minlon + klass.flt_maxlon)
+            flt_mid_lat = 0.5 * (klass.flt_minlat + klass.flt_maxlat)
             klass.npar_flt_nodegrp_px, klass.npar_flt_nodegrp_py = project(klass.npar_flt_nodegrp_plon,
                                                                            klass.npar_flt_nodegrp_plat,
-                                                                           lon_0=0.5 * (klass.minlon + klass.maxlon),
-                                                                           lat_0=0.5 * (klass.minlat + klass.maxlat))
+                                                                           lon_0=flt_mid_lon,
+                                                                           lat_0=flt_mid_lat)
 
         return klass
 
