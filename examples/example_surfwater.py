@@ -130,7 +130,6 @@ def compute_nodescale_width(gdf_widths_ortho=None, gdf_widths_chck=None):
     # Else beta>0 AND W2!=nan : W = (W1 + |cos(theta)|xW2)/(1+|cos(theta)|)
     ser_cos_theta_tmp = gdf_widths_out["cos_theta"].apply(np.abs)
     gdf_widths_out.loc[~ser_mask, "width"] = gdf_widths_out.loc[~ser_mask, "width_1"] + gdf_widths_out.loc[~ser_mask, "width_2"].mul(ser_cos_theta_tmp)
-    gdf_widths_out.loc[~ser_mask, "width"] = gdf_widths_out.loc[~ser_mask, "width"]
     gdf_widths_out.loc[~ser_mask, "width"] = gdf_widths_out.loc[~ser_mask, "width"].div(ser_cos_theta_tmp[~ser_mask].apply(lambda ct: ct + 1.0))
 
     del ser_cos_theta_tmp
