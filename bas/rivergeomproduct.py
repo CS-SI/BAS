@@ -262,16 +262,12 @@ class RiverGeomProduct:
         klass.npar_int_reachgrp_reachid = gdf_reaches[dct_attr["reaches"]["reaches_id"]].to_numpy()
         klass.minlon, klass.minlat, klass.maxlon, klass.maxlat = gdf_reaches.total_bounds
 
-        gser_reach_midpoint = gdf_reaches["geometry"].interpolate(0.5, normalized=True)
-        klass.npar_flt_reachgrp_plon = gser_reach_midpoint.x.to_numpy()
-        klass.npar_flt_reachgrp_plat = gser_reach_midpoint.y.to_numpy()
+        # Sort reach information
         for index, row in gdf_reaches.iterrows():
             reach_id = row[dct_attr["reaches"]["reaches_id"]]
 
             klass.dct_pcenterline[reach_id] = {}
             klass.dct_pcenterline[reach_id]["lonlat"] = row["geometry"]
-            klass.dct_pcenterline[reach_id]["plon"] = klass.npar_flt_reachgrp_plon[index]
-            klass.dct_pcenterline[reach_id]["plat"] = klass.npar_flt_reachgrp_plat[index]
 
             arr_centerline_lon = [t[0] for t in row["geometry"].coords]
             arr_centerline_lat = [t[1] for t in row["geometry"].coords]
