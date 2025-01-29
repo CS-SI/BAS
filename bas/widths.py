@@ -142,7 +142,7 @@ def compute_widths_from_single_watermask_base(watermask, sections, buffer_length
     updated_sections.insert(len(updated_sections.columns) - 1, "width",
                             np.nan)
     # Add a column to contain buffer area
-    updated_sections.insert(len(updated_sections.columns) - 1, "buffer_area",
+    updated_sections.insert(len(updated_sections.columns) - 1, "buffarea",
                             np.nan)
     # Add a column to contain flag indicating if buffer is full of water (and so potentially sections is too short)
     updated_sections.insert(len(updated_sections.columns) - 1, "flg_bufful",
@@ -155,7 +155,7 @@ def compute_widths_from_single_watermask_base(watermask, sections, buffer_length
 
     # Apply buffer to sections
     sections_buffered = sections.buffer(0.5 * buffer_length, cap_style=2)
-    updated_sections["buffer_area"] = sections_buffered.area
+    updated_sections["buffarea"] = sections_buffered.area
 
     # Export
     if export_buffered_sections:
@@ -193,7 +193,7 @@ def compute_widths_from_single_watermask_base(watermask, sections, buffer_length
                 updated_sections.at[section_index, "width"] = effective_width
 
                 # Check if buffer is full
-                if updated_sections.at[section_index, "buffer_area"] == water_area:
+                if updated_sections.at[section_index, "buffarea"] == water_area:
                     updated_sections.loc[section_index, "flg_bufful"] = 1
                 else:
                     updated_sections.loc[section_index, "flg_bufful"] = 0
@@ -273,7 +273,7 @@ def compute_widths_from_single_watermask_scenario11(watermask,
     updated_sections.insert(len(updated_sections.columns) - 1, "width",
                             np.nan)
     # Add a column to contain buffer area
-    updated_sections.insert(len(updated_sections.columns) - 1, "buffer_area",
+    updated_sections.insert(len(updated_sections.columns) - 1, "buffarea",
                             np.nan)
     # Add a flag column indicating if buffer is full of water (and so potentially sections is too short)
     updated_sections.insert(len(updated_sections.columns) - 1, "flg_bufful",
@@ -292,7 +292,7 @@ def compute_widths_from_single_watermask_scenario11(watermask,
 
     # Apply buffer to sections and store their area
     sections_buffered = sections.buffer(0.5 * buffer_length, cap_style=2)
-    updated_sections["buffer_area"] = sections_buffered.area
+    updated_sections["buffarea"] = sections_buffered.area
 
     # Export
     if export_buffered_sections:
@@ -337,7 +337,7 @@ def compute_widths_from_single_watermask_scenario11(watermask,
                 updated_sections.at[section_index, "width"] = effective_width
 
                 # Check if buffer is full
-                if updated_sections.at[section_index,"buffer_area"] == water_area:
+                if updated_sections.at[section_index,"buffarea"] == water_area:
                     updated_sections.loc[section_index, "flg_bufful"] = 1
                 else:
                     updated_sections.loc[section_index, "flg_bufful"] = 0
