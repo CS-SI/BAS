@@ -40,11 +40,6 @@ from bas.rivergeomproduct import RiverGeomProduct
 from bas.tools import FileExtensionError
 from bas.watermask import WaterMask
 
-# os.environ['USE_PYGEOS'] = '0'
-
-
-# from widths import compute_widths_from_single_watermask
-
 # Config BAS
 DCT_CONFIG_O = {
     "clean": {
@@ -368,6 +363,9 @@ class WidthProcessor:
 
         LOGGER = logging.getLogger("WidthProcessing.preprocessing")
 
+        with rio.open(self.f_watermask_in) as src:
+            crs_wm_in = src.crs
+
         # Instanciate RiverGeom object
         LOGGER.info("Instanciate RiverGeomProduct object ..")
         try:
@@ -385,6 +383,7 @@ class WidthProcessor:
                 nodes_shp=self.nodes_shp,
                 bool_edge=False,
                 dct_attr=dct_geom_attr,
+                crs_in=crs_wm_in
             )
             LOGGER.info("Instanciation done..")
         except Exception as err:
