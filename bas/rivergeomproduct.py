@@ -35,7 +35,22 @@ from sw1dto2d.sw1dto2d import SW1Dto2D
 from bas.tools import FileExtensionError
 from bas.tools import project
 
-# os.environ['USE_PYGEOS'] = '0'
+
+def default_reproject_reach(lin_reach, minlon, minlat, maxlon, maxlat):
+    """Default reprojection of each reach geometry in laea system
+    """
+
+    arr_centerline_lon = [t[0] for t in lin_reach.coords]
+    arr_centerline_lat = [t[1] for t in lin_reach.coords]
+    arr_centerline_x, arr_centerline_y = project(arr_centerline_lon,
+                                                 arr_centerline_lat,
+                                                 lon_0=0.5 * (minlon + maxlon),
+                                                 lat_0=0.5 * (minlat + maxlat))
+    lin_laea_reach = LineString(
+        [(x, y) for (x, y) in
+         zip(arr_centerline_x, arr_centerline_y)])
+
+    return lin_laea_reach
 
 
 def get_linedge_pointwise_norm(npar_xycoord):
@@ -205,7 +220,11 @@ class RiverGeomProduct:
         self.bool_isempty = True
         self.bool_edge = True
 
-        # 1D geometries bounding box
+        # Optionnal projected system information
+        self.bool_input_crs = False
+        self.crs_in = None
+
+        # 1D geometries bounding box - geographic system
         self.flt_minlon = None
         self.flt_minlat = None
         self.flt_maxlon = None
@@ -217,8 +236,6 @@ class RiverGeomProduct:
 
         # Reach geometries information
         self.npar_int_reachgrp_reachid = None  # Reach ID
-        self.npar_flt_reachgrp_plon = None
-        self.npar_flt_reachgrp_plat = None
         self.dct_pcenterline = {}  # Reach LineString prior geometry defining
 
         # Node geometries information
@@ -230,26 +247,38 @@ class RiverGeomProduct:
         self.npar_flt_nodegrp_pwse = None  # Prior node wse
 
         # To produce
-        self.npar_flt_nodegrp_px = None  # Node prior longitude projected to "laea"
-        self.npar_flt_nodegrp_py = None  # Node prior latitude projected to "laea"
+        self.npar_flt_nodegrp_px = None  # Node prior longitude projected
+        self.npar_flt_nodegrp_py = None  # Node prior latitude projected
         self.dct_centerline = {}  # Reach-scale geometry/xs/p_wse/p_width -- use to derive sections from sw1dto2d
 
     @classmethod
-    def from_gdf(cls, gdf_reaches=None, gdf_nodes=None, bool_edge=True, dct_attr=None):
+    def from_gdf(cls, gdf_reaches=None, gdf_nodes=None, bool_edge=True, dct_attr=None, crs_in=None):
         """Instanciate object from geodataframe objects
 
         Parameters
         ----------
         gdf_reaches : gpd.GeoDataFrame
+            Set of reaches LineString geometries
         gdf_nodes : gpd.GeoDataFrame
+            Set of nodes Point geometries
+        bool_edge : boolean
+            Indicates if nodes segmentation includes reache edges (True) or not (False)
         dct_attr : dct
-        { "reaches": { "reaches_id" : ""}, "nodes": {"reaches_id" : "", "nodes_id": "", "pwidth": "", "pwse": ""} }
+            { "reaches": { "reaches_id" : ""}, "nodes": {"reaches_id" : "", "nodes_id": "", "pwidth": "", "pwse": ""} }
+            Dictionary matching input reaches/nodes attributes
+        crs_in : CRS-like
+            Projected CRS code in which reproject geometries to compute node xs along reaches
+            If not provided, used default laea projection centered on reaches/nodes extent
         Returns
         -------
         klass : RiverGeomProduct object
         """
 
         klass = RiverGeomProduct()
+
+        # Set projection system
+        if crs_in is not None:
+            klass.bool_input_crs = True
 
         # Count available geometries
         klass.int_reach_dim = len(gdf_reaches)
@@ -262,22 +291,33 @@ class RiverGeomProduct:
         klass.npar_int_reachgrp_reachid = gdf_reaches[dct_attr["reaches"]["reaches_id"]].to_numpy()
         klass.minlon, klass.minlat, klass.maxlon, klass.maxlat = gdf_reaches.total_bounds
 
+        # Compute reach projected-geometry
+        if klass.bool_input_crs:
+            try:
+                gser_projected_reaches = gdf_reaches["geometry"].to_crs(crs_in)
+            except Exception as err:
+                print("Error while trying to reproject reaches in input crs")
+                print(err)
+                print("Reproject in default laea system")
+                gser_projected_reaches = gdf_reaches["geometry"].apply(
+                    lambda lin_reach: default_reproject_reach(lin_reach, klass.minlon, klass.minlat, klass.maxlon,
+                                                              klass.maxlat))
+        else:
+            gser_projected_reaches = gdf_reaches["geometry"].apply(
+                lambda lin_reach: default_reproject_reach(lin_reach, klass.minlon, klass.minlat, klass.maxlon,
+                                                          klass.maxlat))
+
         # Sort reach information
         for index, row in gdf_reaches.iterrows():
+            # Set reach_id
             reach_id = row[dct_attr["reaches"]["reaches_id"]]
 
+            # Initialize dictionnary element
             klass.dct_pcenterline[reach_id] = {}
             klass.dct_pcenterline[reach_id]["lonlat"] = row["geometry"]
 
-            arr_centerline_lon = [t[0] for t in row["geometry"].coords]
-            arr_centerline_lat = [t[1] for t in row["geometry"].coords]
-            arr_centerline_x, arr_centerline_y = project(arr_centerline_lon,
-                                                         arr_centerline_lat,
-                                                         lon_0=0.5 * (klass.minlon + klass.maxlon),
-                                                         lat_0=0.5 * (klass.minlat + klass.maxlat))
-            klass.dct_pcenterline[reach_id]["xy"] = LineString(
-                [(x, y) for (x, y) in
-                 zip(arr_centerline_x, arr_centerline_y)])
+            # Sort projected geometry
+            klass.dct_pcenterline[reach_id]["xy"] = gser_projected_reaches.loc[index]
 
         # Get nodes information
         klass.npar_int_nodegrp_nodeid = gdf_nodes[dct_attr["nodes"]["nodes_id"]].to_numpy()
@@ -295,23 +335,50 @@ class RiverGeomProduct:
         except KeyError:
             klass.npar_flt_nodegrp_pwse = 15. * np.ones_like(klass.npar_flt_nodegrp_plon)
 
-        klass.npar_flt_nodegrp_px, klass.npar_flt_nodegrp_py = project(klass.npar_flt_nodegrp_plon,
-                                                                       klass.npar_flt_nodegrp_plat,
-                                                                       lon_0=0.5 * (klass.minlon + klass.maxlon),
-                                                                       lat_0=0.5 * (klass.minlat + klass.maxlat))
+        # Compute node projected-geometry
+        if klass.bool_input_crs:
+            try:
+                gser_projected_nodes = gdf_nodes["geometry"].to_crs(crs_in)
+                klass.npar_flt_nodegrp_px = gser_projected_nodes.x.to_numpy()
+                klass.npar_flt_nodegrp_py = gser_projected_nodes.y.to_numpy()
+
+            except Exception as err:
+                print("Error while trying to reproject nodes in input crs")
+                print(err)
+                print("Reproject in default laea system")
+                klass.npar_flt_nodegrp_px, klass.npar_flt_nodegrp_py = project(klass.npar_flt_nodegrp_plon,
+                                                                               klass.npar_flt_nodegrp_plat,
+                                                                               lon_0=0.5 * (
+                                                                                       klass.minlon + klass.maxlon),
+                                                                               lat_0=0.5 * (
+                                                                                       klass.minlat + klass.maxlat))
+
+        else:
+            klass.npar_flt_nodegrp_px, klass.npar_flt_nodegrp_py = project(klass.npar_flt_nodegrp_plon,
+                                                                           klass.npar_flt_nodegrp_plat,
+                                                                           lon_0=0.5 * (klass.minlon + klass.maxlon),
+                                                                           lat_0=0.5 * (klass.minlat + klass.maxlat))
 
         return klass
 
     @classmethod
-    def from_shp(cls, reaches_shp=None, nodes_shp=None, bool_edge=True, dct_attr=None):
+    def from_shp(cls, reaches_shp=None, nodes_shp=None, bool_edge=True, dct_attr=None, crs_in=None):
         """Instanciate object from shapefiles
 
         Parameters
         ----------
         reaches_shp : str
+            Full path towards reaches shapefile
         nodes_shp : str
+            Full path towards nodes shapefile
+        bool_edge : boolean
+            Indicates if nodes segmentation includes reache edges (True) or not (False)
         dct_attr : dct
-        { "reaches": { "reaches_id" : ""}, "nodes": {"reaches_id" : "", "nodes_id": "", "pwidth": "", "pwse": ""} }
+            { "reaches": { "reaches_id" : ""}, "nodes": {"reaches_id" : "", "nodes_id": "", "pwidth": "", "pwse": ""} }
+            Dictionary matching input reaches/nodes attributes
+        crs_in : CRS-like
+            Projected CRS code in which reproject geometries to compute node xs along reaches
+            If not provided, used default laea projection centered on reaches/nodes extent
         Returns
         -------
         klass : RiverGeomProduct object
@@ -339,7 +406,8 @@ class RiverGeomProduct:
         klass = RiverGeomProduct.from_gdf(gdf_reaches=gdf_reaches,
                                           gdf_nodes=gdf_nodes,
                                           bool_edge=bool_edge,
-                                          dct_attr=dct_attr)
+                                          dct_attr=dct_attr,
+                                          crs_in=crs_in)
 
         return klass
 
@@ -384,15 +452,15 @@ class RiverGeomProduct:
         """
 
         # Check input types
-        if isinstance(reachid, str) :
-            if not isinstance(self.npar_int_nodegrp_reachid.dtype, (str,object)):
+        if isinstance(reachid, str):
+            if not isinstance(self.npar_int_nodegrp_reachid.dtype, (str, object)):
                 raise TypeError(f"Input reachid of class {reachid.__class__} is different from attribute "
                                 f"npar_int_nodegrp_reachid dtype {self.npar_int_nodegrp_reachid.dtype}")
 
         else:
             if reachid.__class__ != self.npar_int_nodegrp_reachid.dtype:
                 raise TypeError(f"Input reachid of class {reachid.__class__} is different from attribute "
-                            f"npar_int_nodegrp_reachid dtype {self.npar_int_nodegrp_reachid.dtype}")
+                                f"npar_int_nodegrp_reachid dtype {self.npar_int_nodegrp_reachid.dtype}")
 
         self.dct_centerline[reachid] = {}
 
