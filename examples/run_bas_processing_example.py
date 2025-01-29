@@ -21,10 +21,9 @@
 # limitations under the License.
 
 import os
-# import sys
-# sys.path.append("/home/cemery/Work/git/BAS/bas")
 
 import geopandas as gpd
+import rasterio as rio
 
 from bas.basprocessor import BASProcessor
 from bas.rivergeomproduct import RiverGeomProduct
@@ -224,16 +223,62 @@ def example_4():
     print("")
     print("===== BASProcessing Example #4 = END =====")
 
-
 def example_5a():
     """Example_5a :
+        Initialize reaches/nodes from shp and set projection from watermask
+    """
+
+    print("===== BASProcessing Example #5a = BEGIN =====")
+    print("")
+
+    dct_geom_attr = {"reaches": {"reaches_id": "reach_id"},
+                     "nodes": {"reaches_id": "reach_id",
+                               "nodes_id": "node_id",
+                               "pwidth": "p_width",
+                               "pwse": "p_wse"}}
+
+    print("==> Compute sections using crs from watermask")
+
+    # Get watermask crs
+    with rio.open(watermask_tif) as src:
+        crs_wm_in = src.crs
+    print(crs_wm_in)
+
+    # Compute sections
+    obj_rivergeom = RiverGeomProduct.from_shp(reaches_shp=shp_reaches_cplx,
+                                              nodes_shp=shp_nodes_cplx,
+                                              bool_edge=False,
+                                              crs_in=crs_wm_in,
+                                              dct_attr=dct_geom_attr)
+    obj_rivergeom.draw_allreaches_centerline()
+    gdf_sections_ortho = obj_rivergeom.draw_allreaches_sections(type="ortho", flt_factor_width=15.)
+    print(gdf_sections_ortho.loc[:,["reach_id", "node_id", "loc_xs"]])
+
+    print("==> Compute sections using default laea crs")
+
+    # Compute sections
+    obj_rivergeom = RiverGeomProduct.from_shp(reaches_shp=shp_reaches_cplx,
+                                              nodes_shp=shp_nodes_cplx,
+                                              bool_edge=False,
+                                              dct_attr=dct_geom_attr)
+    obj_rivergeom.draw_allreaches_centerline()
+    gdf_sections_ortho = obj_rivergeom.draw_allreaches_sections(type="ortho", flt_factor_width=15.)
+    print(gdf_sections_ortho.loc[:, ["reach_id", "node_id", "loc_xs"]])
+
+
+    print("")
+    print("===== BASProcessing Example #5a = END =====")
+
+
+def example_5b():
+    """Example_5b :
         Initialize reaches/nodes from shp
         Watermask cleaning with reference waterbodies + watermask labelling
         Sections NOT available
         Reduce section - "hydrogeom" + providing tolerance values as constant
     """
 
-    print("===== BASProcessing Example #5a = BEGIN =====")
+    print("===== BASProcessing Example #5b = BEGIN =====")
     print("")
 
     # Load reaches
@@ -305,21 +350,21 @@ def example_5a():
 
     gdf_widths_a["reach_id"] = gdf_widths_a["reach_id"].astype(str)
     gdf_widths_a["node_id"] = gdf_widths_a["node_id"].astype(int).astype(str)
-    gdf_widths_a.to_file("widths_example5a.shp")
+    gdf_widths_a.to_file("widths_example5b.shp")
 
     print("")
-    print("===== BASProcessing Example #5a = END =====")
+    print("===== BASProcessing Example #5b = END =====")
 
 
-def example_5b():
-    """Example_5b :
+def example_5c():
+    """Example_5c :
         Initialize reaches/sections from gdf
         Watermask cleaning with reference waterbodies + watermask labelling
         Sections NOT available
         Reduce section - "hydrogeom" + providing tolerance values as constant
     """
 
-    print("===== BASProcessing Example #5b = BEGIN =====")
+    print("===== BASProcessing Example #5c = BEGIN =====")
     print("")
 
     # Load reaches
@@ -391,10 +436,11 @@ def example_5b():
 
     gdf_widths_a["reach_id"] = gdf_widths_a["reach_id"].astype(str)
     gdf_widths_a["node_id"] = gdf_widths_a["node_id"].astype(int).astype(str)
-    gdf_widths_a.to_file("widths_example5b.shp")
+    gdf_widths_a.to_file("widths_example5c.shp")
 
     print("")
-    print("===== BASProcessing Example #5b = END =====")
+    print("===== BASProcessing Example #5c = END =====")
+
 
 def example_6():
     """Example_6 :
@@ -678,30 +724,31 @@ def example_8():
 
 
 def main():
-    # # Run example 1
-    # example_1()
-    #
-    # # Run example 2
-    # example_2()
-    #
-    # # Run example 3
-    # example_3()
-    #
-    # # Run example 4
-    # example_4()
+    # Run example 1
+    example_1()
+
+    # Run example 2
+    example_2()
+
+    # Run example 3
+    example_3()
+
+    # Run example 4
+    example_4()
 
     # Run examples 5
     example_5a()
     example_5b()
+    example_5c()
 
-    # # Run example 6
-    # example_6()
-    #
-    # # Run example 7
-    # example_7()
-    #
-    # # Run example 8
-    # example_8()
+    # Run example 6
+    example_6()
+
+    # Run example 7
+    example_7()
+
+    # Run example 8
+    example_8()
 
 
 if __name__ == "__main__":
