@@ -29,9 +29,11 @@ import numpy as np
 from shapely.geometry import LineString, MultiLineString
 from shapely.geometry import Point, MultiPoint
 from shapely.geometry import GeometryCollection
+import logging
 
 from bas.constants import FLT_TOL_LEN_DEFAULT, FLT_TOL_DIST_DEFAULT
 
+_logger = logging.getLogger("bas.reduce")
 
 def link_multilinestring_pieces(multiline_in, l_idx=None):
     """ Turn a multilinestring object into a linestring
@@ -291,7 +293,7 @@ def reduce_section_hydrogeom_multiline_point(lin_rch_in,
         raise ValueError("'int_nb_chan_max' parameter must be strictly positive")
     if not isinstance(int_nb_chan_max, int):
         int_nb_chan_max = int(int_nb_chan_max)
-        print("Warning: 'int_nb_chan_max' has been converted into a int")
+        _logger.warning("Warning: 'int_nb_chan_max' has been converted into a int")
     if flt_tol_len > 1. or flt_tol_len <= 0.:
         raise ValueError("'flt_tol_len' parameter must be in interval ]0.; 1.]")
     if flt_tol_dist < 0.:
