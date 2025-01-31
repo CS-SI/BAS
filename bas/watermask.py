@@ -34,11 +34,12 @@ import pandas as pd
 import rasterio as rio
 from rasterio.features import shapes
 from shapely.geometry import shape, Point, Polygon
+import logging
 
 from bas.tools import FileExtensionError, DimensionError
 
 
-# os.environ['USE_PYGEOS'] = '0'
+_logger = logging.getLogger("bas.watermask")
 
 
 class WaterMask:

@@ -35,6 +35,7 @@ import rasterio as rio
 import shapely
 from shapely.geometry import MultiPolygon
 import numpy as np
+import logging
 
 from bas.tools import DisjointBboxError
 from bas.watermask import WaterMask
@@ -42,6 +43,7 @@ from bas.widths import compute_widths_from_single_watermask
 from bas.sections_reduction import reduce_section
 from bas.constants import FLT_TOL_LEN_DEFAULT, FLT_TOL_DIST_DEFAULT, FLT_LABEL_MAX_DIST
 
+_logger = logging.getLogger("bas.basprocessor")
 
 class BASProcessor:
 
@@ -138,8 +140,7 @@ class BASProcessor:
         """Preprocessing: load watermask, reproject sections et check bounding boxes intersections
         """
 
-        print("----- WidthProcessing = Preprocessing -----")
-        print("")
+        _logger.info("----- BASProcessor = Preprocessing -----")
 
         # Load WaterMask object
         self.watermask = WaterMask.from_tif(self.f_watermask_in, self.provider, self.proj)
@@ -151,8 +152,7 @@ class BASProcessor:
         # Check boundingbox compatibility
         self.check_bbox_compatibility()
 
-        print("")
-        print("----- Preprocessing : Done -----")
+        _logger.info("----- BASProcessor Preprocessing : Done -----")
 
     def read_cfg(self, dct_cfg=None):
         """ Add default value to dct_cfg if keywords are missing
@@ -202,6 +202,8 @@ class BASProcessor:
 
         """
 
+        _logger.info("----- BASProcessor = Processing -----")
+
         # Check cfg
         dct_cfg = self.read_cfg(dct_cfg)
 
@@ -213,8 +215,7 @@ class BASProcessor:
         if dct_cfg["label"]["bool_label"]:
             self.label_watermask()
 
-        print("")
-        print("----- Processing : Done -----")
+        _logger.info("----- BASProcessing Processing : Done -----")
 
     def clean_watermask(self, dct_cfg=None):
         """Clean watermask from non-river waterbodies
@@ -390,7 +391,7 @@ class BASProcessor:
             return gdfsub_sections_byreach_onregion
 
         else:
-            print("Warning: no sections intersect the region..")
+            _logger.warning("Warning: no sections intersect the region..")
             return None
 
     def reduce_sections(self, dct_cfg=None, flt_tol_len=FLT_TOL_LEN_DEFAULT, flt_tol_dist=FLT_TOL_DIST_DEFAULT):
@@ -465,6 +466,7 @@ class BASProcessor:
         :param str_fpath_dir_out:
         :return:
         """
+        _logger.info("----- BASProcessor = PostProcessing -----")
 
         # Prepare sections
         gdf_wrk_sections = self.reduce_sections(dct_cfg)
@@ -485,5 +487,7 @@ class BASProcessor:
                                                                  sections=gdf_wrk_sections,
                                                                  buffer_length=8.0 * self.watermask.res,
                                                                  label_attr="label")
+
+        _logger.info("----- BASProcessing PostProcessing : Done -----")
 
         return gdf_widths, str_fpath_wm_tif

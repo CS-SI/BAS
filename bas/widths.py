@@ -30,8 +30,9 @@ import rasterio as rio
 from rasterio.mask import mask
 from rasterio.features import shapes
 from shapely.geometry import shape, MultiPolygon
+import logging
 
-from matplotlib import pyplot as plt
+_logger = logging.getLogger("bas.widths")
 
 
 def compute_widths_from_single_watermask(scenario,
@@ -150,7 +151,7 @@ def compute_widths_from_single_watermask_base(watermask, sections, buffer_length
 
     # Project sections to EPSG 3857 if necessary (to get metric distances)
     if sections.crs.to_epsg() == 4326:
-        print("Inputs in epsg:4326 are projected to epsg:3857, not effective away from equator.")
+        _logger.warning("Inputs in epsg:4326 are projected to epsg:3857, not effective away from equator.")
         sections = sections.to_crs(epsg=3857)
 
     # Apply buffer to sections
@@ -206,7 +207,7 @@ def compute_widths_from_single_watermask_base(watermask, sections, buffer_length
         dry_sections = updated_sections[updated_sections["width"] < 1e-6]
         for section_index in range(dry_sections.shape[0]):
             dry_section = dry_sections.iloc[section_index, :]
-            print("Dry section: %i (ID=%s)" % (section_index, dry_section[index_attr]))
+            _logger.info("Dry section: %i (ID=%s)" % (section_index, dry_section[index_attr]))
 
     return updated_sections, sections_buffered
 
@@ -287,7 +288,7 @@ def compute_widths_from_single_watermask_scenario11(watermask,
 
     # Project sections to EPSG 3857 if necessary (to get metric distances)
     if sections.crs.to_epsg() == 4326:
-        print("Inputs in epsg:4326 are projected to epsg:3857, not effective away from equator.")
+        _logger.warning("Inputs in epsg:4326 are projected to epsg:3857, not effective away from equator.")
         sections = sections.to_crs(epsg=3857)
 
     # Apply buffer to sections and store their area
@@ -413,7 +414,7 @@ def compute_widths_from_single_watermask_scenario11(watermask,
         dry_sections = updated_sections[updated_sections["width"] < 1e-6]
         for section_index in range(dry_sections.shape[0]):
             dry_section = dry_sections.iloc[section_index, :]
-            print("Dry section: %i (ID=%s)" % (section_index, dry_section[index_attr]))
+            _logger.info("Dry section: %i (ID=%s)" % (section_index, dry_section[index_attr]))
 
     return updated_sections, sections_buffered
 

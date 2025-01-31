@@ -31,9 +31,13 @@ import os
 import pandas as pd
 from pyproj import CRS
 from shapely.geometry import Point, LineString
+import logging
+
 from sw1dto2d.sw1dto2d import SW1Dto2D
 from bas.tools import FileExtensionError
 from bas.tools import project
+
+_logger = logging.getLogger("bas.rivergeomproduct")
 
 
 def default_reproject_reach(lin_reach, minlon, minlat, maxlon, maxlat):
@@ -296,9 +300,9 @@ class RiverGeomProduct:
             try:
                 gser_projected_reaches = gdf_reaches["geometry"].to_crs(crs_in)
             except Exception as err:
-                print("Error while trying to reproject reaches in input crs")
-                print(err)
-                print("Reproject in default laea system")
+                _logger.info("Error while trying to reproject reaches in input crs")
+                _logger.error(err)
+                _logger.info("Reproject in default laea system")
                 gser_projected_reaches = gdf_reaches["geometry"].apply(
                     lambda lin_reach: default_reproject_reach(lin_reach,
                                                               klass.flt_minlon,
@@ -349,9 +353,9 @@ class RiverGeomProduct:
                 klass.npar_flt_nodegrp_py = gser_projected_nodes.y.to_numpy()
 
             except Exception as err:
-                print("Error while trying to reproject nodes in input crs")
-                print(err)
-                print("Reproject in default laea system")
+                _logger.info("Error while trying to reproject nodes in input crs")
+                _logger.error(err)
+                _logger.info("Reproject in default laea system")
                 flt_mid_lon = 0.5 * (klass.flt_minlon + klass.flt_maxlon)
                 flt_mid_lat = 0.5 * (klass.flt_minlat + klass.flt_maxlat)
                 klass.npar_flt_nodegrp_px, klass.npar_flt_nodegrp_py = project(klass.npar_flt_nodegrp_plon,
@@ -444,7 +448,7 @@ class RiverGeomProduct:
         """For each reach within the product, draw a centerline between the nodes
         """
 
-        print(" ---- Draw all reaches centerlines ----")
+        _logger.info(" ---- Draw all reaches centerlines ----")
 
         for int_reachid in self.npar_int_reachgrp_reachid:
             self.draw_singlereach_centerline(int_reachid)
@@ -549,7 +553,7 @@ class RiverGeomProduct:
             npar_flt_wrk_xs[1:-1] = xs_subset.copy()
 
             if "0" in nodeid_subset:
-                print(
+                _logger.warning(
                     "Warning: node_id set to '0' will match virtual edge node ids. issue will arise when dropping them.")
             npar_int_wrk_nodeid[0] = "0"
             npar_int_wrk_nodeid[1:-1] = nodeid_subset[npar_int_xs_argsrt]
@@ -578,13 +582,13 @@ class RiverGeomProduct:
         self.dct_centerline[reachid]["duplicates"] = npar_idx_duplicates
 
         if npar_idx_duplicates.size > 0:
-            print(f"Warning reach {reachid} : found duplicate xs")
+            _logger.warning(f"Warning reach {reachid} : found duplicate xs")
             self.dct_centerline[reachid]["bool_duplicates"] = True
 
             # If last node is at edge, make sure removed duplicate is the virtual node at edge
             int_max_duplicate_idx = npar_flt_wrk_xs.size - 2
             if int_max_duplicate_idx in npar_idx_duplicates:
-                print(f"Warning reach {reachid}: last node is at edge => to debug")
+                _logger.warning(f"Warning reach {reachid}: last node is at edge => to debug")
                 npar_idx_duplicates[-1] = npar_flt_wrk_xs.size - 1
 
         else:
@@ -661,7 +665,7 @@ class RiverGeomProduct:
             df_model1d.drop(labels=self.dct_centerline[reachid]["duplicates"],
                             axis=0,
                             inplace=True)
-            print(f"Warning reach {reachid} : Duplicate xs have been removed")
+            _logger.warning(f"Warning reach {reachid} : Duplicate xs have been removed")
 
         # Check centerline geometry
         lin_centerline_valid = check_centerline_geometry(self.dct_pcenterline[reachid]["lonlat"])
@@ -702,7 +706,7 @@ class RiverGeomProduct:
         )
 
         if not self.bool_edge:
-            print("Dropping virtual edge nodes")
+            _logger.info("Dropping virtual edge nodes")
             if isinstance(df_sections.at[0, "node_id"], str):
                 idx_edge = df_sections[df_sections["node_id"] == "0"].index
             elif isinstance(df_sections.at[0, "node_id"], (int, float)):
