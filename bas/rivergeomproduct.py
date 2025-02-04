@@ -672,7 +672,7 @@ class RiverGeomProduct:
 
         return df_model1d, lin_centerline_valid
 
-    def _sort_sections(self, reachid, df_model1d, l_sections):
+    def _sort_sections(self, reachid, df_model1d, l_sections, type="ortho", npar_flt_theta=None):
         """Format section and prior reach information together while cleaning constuction node if necessary
 
         Parameters
@@ -683,6 +683,10 @@ class RiverGeomProduct:
             Prior reach data formatted for class SW1Dto2D instanciation
         l_sections : list of LineStrings
             List of cross-section geometries sorted like df_model1d index
+        type : str
+            "ortho" or "chck"
+        npar_flt_theta : np.array
+            Array of angle in radian between ortho section and its check counterpart
 
         Returns
         -------
@@ -697,6 +701,14 @@ class RiverGeomProduct:
             "node_id": df_model1d["id"].to_numpy(),
             "loc_xs": df_model1d["xs"].to_numpy()
         }
+
+        if type == "chck":
+            if npar_flt_theta is None:
+                _logger.error("missing theta inputs for section sorting.")
+                raise ValueError
+            dict_sections["theta"] = npar_flt_theta * 180. / np.pi
+            dict_sections["sin_theta"] = np.sin(npar_flt_theta)
+
         gser_sections = gpd.GeoSeries(l_sections, crs=CRS(4326))
         df_sections = pd.DataFrame(dict_sections)
         gdf_sections = gpd.GeoDataFrame(
@@ -796,6 +808,8 @@ class RiverGeomProduct:
         # Format sections for outputs
         gdf_sections = self._sort_sections(reachid=reachid,
                                            df_model1d=df_model1d,
-                                           l_sections=l_sections)
+                                           l_sections=l_sections,
+                                           type="chck",
+                                           npar_flt_theta=angles)
 
         return gdf_sections
