@@ -434,20 +434,28 @@ class BASProcessor:
 
         l_gdfsub_sections = []
         for label, group in gdf_wm_labelled_pol.groupby(by="label").groups.items():
+
+            # Extract watermask region associated to current reach
             pol_region = MultiPolygon(gdf_wm_labelled_pol.loc[group, "geometry"].tolist())
 
-            # Extract sections associated to unique current reach
-            reach_id = self.gdf_reaches.at[label, self.attr_reachid]
-            lin_reach = self.gdf_reaches.at[label, "geometry"]
+            # Check if reach has not been previously cleaned
+            if label not in self.gdf_reaches.index:
+                _logger.info(f"Reach with label {label} has been removed.. ignored")
+                gdfsub_sections_byreach_onregion = None
 
-            # Reduce section
-            gdfsub_sections_byreach_onregion = self._reduce_sections_over_reach(reach_id=reach_id,
-                                                                                lin_reach=lin_reach,
-                                                                                pol_region=pol_region,
-                                                                                dct_cfg=dct_cfg)
+            else:
+                # Extract sections associated to unique current reach
+                reach_id = self.gdf_reaches.at[label, self.attr_reachid]
+                lin_reach = self.gdf_reaches.at[label, "geometry"]
+
+                # Reduce section
+                gdfsub_sections_byreach_onregion = self._reduce_sections_over_reach(reach_id=reach_id,
+                                                                                    lin_reach=lin_reach,
+                                                                                    pol_region=pol_region,
+                                                                                    dct_cfg=dct_cfg)
 
             if gdfsub_sections_byreach_onregion is not None:
-                # Add label associated to sections over the currect reach
+                # Add label associated to sections over the current reach
                 gdfsub_sections_byreach_onregion.insert(2, "label", int(label))
 
                 # Add reduced section to the full set
