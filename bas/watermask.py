@@ -68,16 +68,15 @@ class WaterMask:
 
     @classmethod
     def from_tif(cls, watermask_tif=None, str_origin=None, str_proj="proj"):
-        """ Instanciate from any GeoTiff file
+        """Alternate constructor from any GeoTiff file
 
-        Parameters
-        ----------
-        watermask_tif : str
+        :param watermask_tif: str
             Path to GeoTiff file containting watermask
-        str_origin : str
-        str_proj : str
+        :param str_origin: str
+            Indicates origin of watermask
+        :param str_proj: str
             ["proj", "lonlat"]
-
+        :return klass: WaterMask
         """
 
         klass = WaterMask()
@@ -122,16 +121,16 @@ class WaterMask:
         return klass
 
     def band_to_pixc(self, npar_band, raster_src, exclude_values=None, **kwargs):
-        """Transform the input raster band into a pixel-cloud like object in a geodataframe for easier manipulation
+        """Transform the input raster band into a pixel-cloud like object for easier manipulation
 
         :param npar_band: np.array
-            watermask data
+            watermask data band
         :param raster_src: rasterio.io.Dataset
             watermask as raster
         :param exclude_values: (int, float)
             value in watermask to consider as nodata (to ignore)
-        :param kwargs:
-        :return:
+        :return gdf_wm_as_pixc: gpd.GeoDataFrame
+            watermask sorted as a pixel-cloud
         """
 
         # Chcek input npar_band
@@ -142,7 +141,7 @@ class WaterMask:
 
         # Turn watermask band into a point-cloud format
         band_flat = npar_band.flatten()
-        indices = np.where(band_flat != raster_src.nodata)[0]
+        indices = np.where(band_flat != self.nodata)[0]
         if exclude_values is not None:
             if isinstance(exclude_values, (int, float)):
                 indices_excluded = np.where(band_flat == exclude_values)[0]
@@ -173,13 +172,12 @@ class WaterMask:
         return self.gdf_wm_as_pixc
 
     def __str__(self):
-        """ str method
+        """String method
 
-        Returns
-        -------
-        message : str
-
+        :return message: str
+            Basic description of the watermask
         """
+
         if self.str_provider is not None:
             message = "Watermask product from {}\n".format(self.str_provider)
         else:
@@ -190,16 +188,14 @@ class WaterMask:
     def get_bbox(self):
         """Derive bounding box of current WaterMask product in lon-lat system
 
-        Returns
-        -------
-        minlon : float
+        :return minlon: float
             minimum longitude
-        minlat : float
+        :return minlat: float
             minimum latitude
-        maxlon : float
+        :return maxlon: float
             maximum longitude
-        maxlat : float
-            maximum latitude
+        :return maxlat: float
+            maximum latitude:
         """
 
         if self.coordsyst == "lonlat":
@@ -241,8 +237,13 @@ class WaterMask:
         """ Return wm as band-like format with activated flags
 
         :param bool_clean: bool
+            If True, return cleaned watermask
         :param bool_label: bool
-        :return:
+            If True, return labelled watermask
+        :param as_ma : boolean
+            If True, band is retrun as a masked array, else a simple np.array
+        :return npar_band: np.ma.array or np.array
+            Watermask band
         """
 
         npar_band_flat = np.ones((self.width * self.height,)) * self.nodata
@@ -276,13 +277,18 @@ class WaterMask:
         return npar_band
 
     def get_polygons(self, bool_clean=True, bool_label=True, bool_indices=True, bool_exterior_only=True):
-        """ Turn wm into a set of polygons given clean and label flags for vectorial studies
+        """ Turn watermask into a set of polygons given clean and label flags for vectorial studies
 
-        :param bool_clean:
-        :param bool_label:
-        :param bool_indices:
-        :param bool_exterior_only:
-        :return:
+        :param bool_clean: boolean
+            If True, return cleaned watermask
+        :param bool_label: boolean
+            If True, return labelled watermask
+        :param bool_indices: boolean
+            If True, return indices of pixels forming each polygons
+        :param bool_exterior_only: boolean
+            If True, compute only the exterior of each polygons
+        :return gdf_wm_as_pol: gpd.GeoDataFrame
+            Watermask as a set of polygons
         """
 
         npar_band = self.get_band(bool_clean, bool_label, as_ma=True)
@@ -326,17 +332,17 @@ class WaterMask:
     def update_clean_flag(self, mask=None):
         """ Update clean flags: for input indexes in mask, turn clean flag to 0
 
-        :param mask:
-        :return:
+        :param mask: iterable
+            List of pixel indexes to set as "not-clean"
         """
 
         self.gdf_wm_as_pixc.loc[mask, "clean"] = 0
 
     def update_label_flag(self, dct_label=None, dtype_labelled=None):
-        """ Update label values
+        """ Update label values: for each pixels, associate the label of the watermask segmentation
 
-        :param dct_label:
-        :return:
+        :param dct_label: dct
+            Mapping between watermask segmentation label and pixels : {label: l_pixel_indices}
         """
 
         # Get max label value
@@ -366,12 +372,18 @@ class WaterMask:
     def save_wm(self, fmt="tif", bool_clean=True, bool_label=True, str_fpath_dir_out=".", str_suffix=None):
         """ Save the watermask in the asked format : tif/pixc/polygons + "clean/label"
 
-        :param fmt:
-        :param bool_clean:
-        :param bool_label:
-        :param str_fpath_dir_out:
-        :param str_suffix:
-        :return:
+        :param fmt: str
+            Format in which save the watermask: ["tif", "pixc", "shp"]
+        :param bool_clean: boolean
+            If True, save clean version of watermask
+        :param bool_label: boolean
+            If True, save labelled version of watermask
+        :param str_fpath_dir_out: str
+            Full path to the directory where to save the watermask file
+        :param str_suffix: str
+            Suffix to append at the end of the watermask filename
+        :return: str
+            Full path to complete watermask filename
         """
 
         str_basename = self.str_fpath_infile.split("/")[-1].split(".")[0]
