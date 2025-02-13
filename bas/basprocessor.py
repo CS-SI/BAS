@@ -122,6 +122,7 @@ class BASProcessor:
         """Check if sections and watermask are spatially compatible
         """
 
+        _logger.info("Checking bbox compatibility between watermask and river geometries")
         if self.gdf_sections.crs != CRS(4326):
             gdf_crs_sections = self.gdf_sections.to_crs(CRS(4326))
         else:
@@ -144,6 +145,7 @@ class BASProcessor:
 
         # Load WaterMask object
         self.watermask = WaterMask.from_tif(self.f_watermask_in, self.provider, self.proj)
+        _logger.info("watermask loaded..")
 
         # Reproject sections to watermask coordinate system
         self.gdf_reaches = self.gdf_reaches.to_crs(self.watermask.crs_epsg)
@@ -155,18 +157,15 @@ class BASProcessor:
         _logger.info("----- BASProcessor Preprocessing : Done -----")
 
     def read_cfg(self, dct_cfg=None):
-        """ Add default value to dct_cfg if keywords are missing
+        """Add default value to dct_cfg if keywords are missing
 
-        Parameters
-        ----------
-        dct_cfg : dict
-
-        Returns
-        -------
-        dct_cfg : dict
-
+        :param dct_cfg: dict
+            Input configuration dictionary
+        :return dct_cfg: dict:
+            Updated/Filled configuration dictionary
         """
 
+        _logger.info("Check processing configuration")
         for key in ["clean", "label", "widths"]:
             if key not in dct_cfg.keys():
                 dct_cfg[key] = self.dct_cfg[key]
@@ -180,26 +179,24 @@ class BASProcessor:
     def processing(self, dct_cfg=None, str_fpath_dir_out="."):
         """Processing : extraction of widths from watermask
 
-        Parameters
-        ----------
-        dct_cfg : set processing configuration
-        { "clean" : { "bool_clean" : True/False,
+        :param dct_cfg: dict
+            Processing configuration
+            { "clean" : { "bool_clean" : True/False,
                       "type_clean" : base/waterbodies,
                       "fpath_wrkdir" : "."
                       "gdf_waterbodies" : gdf with polygon waterbodies to clean waterbodies [optionnal]
                     },
-          "label" : { "bool_label" : True/False,
+            "label" : { "bool_label" : True/False,
                       "type_label" : base,
                       "fpath_wrkdir" : "."
                     },
-          "widths" : { scenario : 0/1/10/11
+            "widths" : { scenario : 0/1/10/11
                      }
         }
-
-        Returns
-        -------
-        gdf_widths : gpd.GeoDataFrame
-
+        :param str_fpath_dir_out: str
+            Full path to directory where to save outputs
+        :return gdf_widths : gpd.GeoDataFrame
+            Node-scale width with cross-section geometries
         """
 
         _logger.info("----- BASProcessor = Processing -----")
@@ -208,24 +205,34 @@ class BASProcessor:
         dct_cfg = self.read_cfg(dct_cfg)
 
         # Clean watermask
-        if dct_cfg["clean"]["bool_clean"]:
-            self.clean_watermask(dct_cfg)
+        try:
+            if dct_cfg["clean"]["bool_clean"]:
+                self.clean_watermask(dct_cfg)
+        except Exception as err:
+            _logger.info("Error while cleaning watermask")
+            _logger.error(err)
+            raise Exception
 
         # Label watermask
-        if dct_cfg["label"]["bool_label"]:
-            self.label_watermask()
+        try:
+            if dct_cfg["label"]["bool_label"]:
+                self.label_watermask(dct_cfg)
+        except Exception as err:
+            _logger.info("Error while lebelling watermask")
+            _logger.error(err)
+            raise Exception
 
         _logger.info("----- BASProcessing Processing : Done -----")
 
     def clean_watermask(self, dct_cfg=None):
         """Clean watermask from non-river waterbodies
 
-        Parameters
-        ----------
-        Returns
-        -------
-
+        :param dct_cfg: dict
+            Processing configuration
         """
+
+        str_type_clean = dct_cfg["clean"]["type_clean"]
+        _logger.info(f"Cleaning watermask - method :: {str_type_clean}")
 
         # Check config_dct
         if dct_cfg is None:
@@ -251,7 +258,7 @@ class BASProcessor:
         )
 
         # Apply waterbodies-type cleaning if activated
-        if dct_cfg["clean"]["gdf_waterbodies"] is not None and dct_cfg["clean"]["type_clean"] == "waterbodies":
+        if dct_cfg["clean"]["gdf_waterbodies"] is not None and str_type_clean == "waterbodies":
 
             if not isinstance(dct_cfg["clean"]["gdf_waterbodies"], gpd.GeoDataFrame):
                 raise TypeError
@@ -279,8 +286,26 @@ class BASProcessor:
         # Update clean flag in the watermask
         self.watermask.update_clean_flag(mask=l_idx_pixc_notclean)
 
-    def label_watermask(self):
+    def label_watermask(self, dct_cfg):
         """Label watermask into individual regions associated to a unique reach each
+
+        :param dct_cfg: : dict
+            Processing configuration
+        """
+
+        str_type_label = dct_cfg["label"]["type_label"]
+        _logger.info(f"Labelling watermask - method :: {str_type_label}")
+
+        if str_type_label == "base":
+            self.label_watermask_base()
+
+        else:
+            _logger.info(f"Segmentation method {str_type_label} not implemented")
+            raise NotImplementedError
+
+    def label_watermask_base(self):
+        """Label watermask into individual regions associated to a unique reach each
+            Base method : each watermask pixel is associated to the closest reach
         """
 
         # Gather reaches and project them into the watermask coordinate system
@@ -298,7 +323,7 @@ class BASProcessor:
         self.watermask.update_label_flag(dct_label_update)
 
     def _prepare_tol_inputs(self, str_input_name=None, obj_to_prepare=None, default_value=0.):
-        """
+        """Add parameters to constrain procedure used to reduce cross-sections to watermask
 
         :param str_input_name: str
             key pointing towards the parameter to prepare
@@ -306,7 +331,6 @@ class BASProcessor:
             dict with configuration parameter
         :param default_value:
             default value of parameter, if key str_input_name is not in obj_to_prepare dictionnary
-        :return:
         """
 
         if str_input_name is None:
@@ -345,8 +369,8 @@ class BASProcessor:
             geometry of the vectorized watermask associated to the current reach
         :param dct_cfg: dict
             configuration dictionnary
-        :return: GeoDataFrame
-            gdfsub_sections_byreach_onregion
+        :return gdfsub_sections_byreach_onregion: GeoDataFrame
+            Subset of original cross-section : cross-section have been either removed or reduced to the watermask
         """
 
         gdfsub_sections_byreach = self.gdf_sections[self.gdf_sections[self.attr_reachid] == reach_id].copy(
@@ -397,14 +421,16 @@ class BASProcessor:
     def reduce_sections(self, dct_cfg=None, flt_tol_len=FLT_TOL_LEN_DEFAULT, flt_tol_dist=FLT_TOL_DIST_DEFAULT):
         """Reduce sections geometry to its associated region
 
-        Parameters
-        ----------
-
-        Returns
-        -------
-        gdf_sections_out : gpd.GeoDataFrame
-            reduced sections geometry
-
+        :param dct_cfg: dict
+            Processing configuration
+        :param flt_tol_len: float
+            Default value for minimal cross-section piece length
+            when segmented over multiple channels
+        :param flt_tol_dist: float
+            Default value for minimum distance between adjacent pieces of sub-cross-section
+            when segmented over multiple channels
+        :return gdf_sections_out : gpd.GeoDataFrame
+            Corrected cross-section geometries
         """
 
         # Check config_dct
@@ -467,12 +493,18 @@ class BASProcessor:
         return gdf_sections_out
 
     def postprocessing(self, dct_cfg=None, str_fpath_dir_out=".", str_fpath_wm_in=None):
-        """
+        """Post-processing :: Temporarily save cleaned/labelled watemask and compute node-scale widths
 
-        :param str_fpath_wm_in:
-        :param dct_cfg:
-        :param str_fpath_dir_out:
-        :return:
+        :param str_fpath_wm_in: str
+            Full path to prepared watermask
+        :param dct_cfg: dict
+            Processing configuration
+        :param str_fpath_dir_out: str
+            Full path to directory where to save outputs and intermediate files
+        :return gdf_widths: gpd.GeoDataFrame
+            Node-scale widths
+        :return str_fpath_wm_tif: str
+            Full path to prepared watermask
         """
         _logger.info("----- BASProcessor = PostProcessing -----")
 
