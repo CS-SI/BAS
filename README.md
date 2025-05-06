@@ -1,9 +1,14 @@
+This project has now been archived. We invite you to use component
+[MIRROWRS](https://github.com/csgroup-oss/MIRROWRS), which is a refactoring of BAS.
+
 # BAS
-[ Buffer Around Sections]
+
+BAS means Buffer Around Sections.
 
 > Derive river width from a binary watermask and a set of sections
 
-BAS is a simple Python-based toolbox designed to compute river widths from a space-borne watermask given a set of section (line geometries) set along the river.
+BAS is a simple Python-based toolbox designed to compute river widths from a space-borne
+watermask given a set of section (line geometries) set along the river.
 
 ## Download
 
@@ -13,7 +18,8 @@ Main version available on github : https://github.com/CS-SI/BAS
 
 ### With conda and a yml file
 
-The toolbox works in a specific environment that can be installed through conda using the environment_bas.yml file
+The toolbox works in a specific environment that can be installed through conda using the
+`environment_bas.yml` file.
 
 ```shell
 conda env create -f environment_bas_py38.yml # for python 3.8
@@ -33,7 +39,8 @@ Using a virtual environment is strongly recommended.
 
 #### Locally
 
-If you have python-3.12 and `sw1Dto2D` is already installed, then running this command will install BAS requirements
+If you have python-3.12 and `sw1Dto2D` is already installed, then running this command
+will install BAS requirements
 
 ```bash
 # if gdal is not yet installed 
@@ -87,21 +94,24 @@ To use BAS on Surfwater-like watermasks, here is the general command
 run_bas -w /path/to/water_mask.tif -dt YYYYmmddThhmmss -r /path/to/eu_sword_reaches_hb23_v16.shp -n /path/to/eu_sword_nodes_hb23_v16.shp -o /path/to/output/directory
 ```
 
-This will only save a csv file with widths data. You can had `--more_outputs` to also save the cleaned watermask and the shapefile.  
+This will only save a csv file with widths data. You can had `--more_outputs`
+to also save the cleaned watermask and the shapefile.  
 
 
 ## Features
 
 Using the BAS toolbox, you can perform two tasks :
 
-- Given a watermask (as a GeoTiff file), a set on centerline reaches (as a shapefile of LineString) and a set of sections (as a shapefile of LineString),
-derive the river widths along the sections
-- If the sections lines are not available, using the centerline reaches (as a shapefile of LineString) and a set of segmentation points (as a shapefile of Point),
-you can draw the sections yourself
+- Given a watermask (as a GeoTiff file), a set on centerline reaches (as a shapefile
+  of LineString) and a set of sections (as a shapefile of LineString), derive the
+  river widths along the sections
+- If the sections lines are not available, using the centerline reaches (as a
+  shapefile of LineString) and a set of segmentation points (as a shapefile of Point),
+  you can draw the sections yourself
 
 
 ## License
 
-BAS is licensed by [CS GROUP](https://www.c-s.fr/) under
+BAS is licensed by [CS GROUP](https://www.cs-soprasteria.com/) under
 the [Apache License, version 2.0](http://www.apache.org/licenses/LICENSE-2.0.html).
 A copy of this license is provided in the [LICENSE](LICENSE) file.
